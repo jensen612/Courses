@@ -312,8 +312,8 @@ begin
     end
     else if(bf_2_en)
 	begin
-		Ar2 <= RAM0_r[bf_0_addr];	//From RAM anterior data: 
-		Ai2 <= RAM0_i[bf_0_addr];
+		Ar2 <= RAM2_r[bf_2_addr];	//From RAM anterior data: 
+		Ai2 <= RAM2_i[bf_2_addr];
 		Br2 <= Sr1;		//From input: 128, 129, ..., 255
 		Bi2 <= Si1;		//Directly do signed extension
 		bf_2_addr <= bf_2_addr+1;
@@ -482,7 +482,231 @@ begin
 			end
 		end
 	end
-end	
+end
+	
 //repeat....
+	
+// ***** stage 4
+BF4 BF(.ar(Ar4),.ai(Ai4),.br(Br4),.bi(Bi4),.cr(Cr4),.ci(Ci4),.dr(Dr4),.di(Di4)) //Two inputs. Two outputs. C:Addition; D:Substraction
+TF4 TJ(.tr(Tr4),.ti(Ti4),.sel(Sel4),.sr(Sr4),.si(Si4))		//only needs to implement * (-j)
 
+always @(posedge CLK or posedge RST)		//STAGE 4 Store: loop of 8
+begin
+	if(RST)
+	begin
+		bf_4_en   <= 0;			//Disable this stage's BF (stage 4)			
+		tf_4_en   <= 0;			//Disable this stage's Twiddle Factor Module
+		input_4_flag <= 1;		//Initial mode: input from Data_in
+		RAM4_addr <= 0;			//Address Reset	
+	end
+	else if(input_en)
+	begin
+		if(input_4_flag == 1)		// Input data go into RAM 4   
+		begin
+			RAM4_r[RAM4_addr] <= Sr3;  
+			RAM4_i[RAM4_addr] <= Si3;  
+			RAM4_addr <= RAM4_addr+1;
+			if(RAM4_addr == 7)
+			begin	
+				bf_4_en   <= 1;		//Enable this stage's BF (stage 4)			
+				tf_4_en   <= 1;		//Enable this stage's Twiddle Factor Module
+				input_4_flag <= 0;
+				RAM4_addr <= 0;
+			end
+		end
+		else //input_4_flag == 0, fetch from butterfly
+		begin
+			RAM4_r[RAM4_addr] <= Dr4;		//Subtraction part goes back io RAM4
+			RAM4_i[RAM4_addr] <= Di4;		
+			RAM4_addr <= RAM4_addr+1;
+			if(RAM4_addr == 7)
+			begin
+				bf_4_en <= 0;	//Disable this stage's BF
+				RAM4_addr <= 0;
+				input_4_flag <= 1;
+			end
+		end
+	end
+end
+
+always @(negedge CLK or posedge RST)		//STAGE 4 Butterfly: loop of 8
+begin
+    if(RST) 
+    begin
+        bf_4_addr <= 0;   //Address signal for BF reset
+    end
+    else if(bf_4_en)
+	begin
+		Ar4 <= RAM0_r[bf_4_addr];	//From RAM anterior data: 
+		Ai4 <= RAM0_i[bf_4_addr];
+		Br4 <= Sr3;		
+		Bi4 <= Si3;			//From stage 3 buffer
+		bf_4_addr <= bf_4_addr+1;
+		if(bf_4_addr == 7)
+		begin
+			bf_4_addr <= 0;
+		end
+	end
+end
+
+	always @(posedge CLK or posedge RST)		//STAGE 4 Twiddle Factor: loop of 8
+begin
+	if(RST)
+	begin
+		tf_4_addr <= 0;			//Address rest
+		stage5_input_en <= 0;	//Disable input into stage3
+	end
+	else if(tf_4_en)					//Open the stage 4's tf module
+	begin
+		stage5_input_en <= 1;	//Open the stage 1's RAM after data enters into tf module
+		if(bf_4_en)
+		begin
+			Tr4 <= Cr4;		//Addition part goes to tf module
+			Ti4 <= Ci4;
+			Sel4 <= 0; 	
+			tf_4_addr <= tf_4_addr + 1;
+			if(tf_4_addr == 7)
+			begin
+				tf_4_addr <= 0;
+			end
+		end
+		else	//bf_4_en == 0, receiving data from RAM4
+		begin
+			Tr4 <= RAM4_r[tf_4_addr];
+			Ti4 <= RAM4_i[tf_4_addr];
+			tf_4_addr <= tf_4_addr + 1;
+			if(tf_4_addr < 4)
+			begin
+				Sel4 <= 0;
+			end
+			else			//Last one quarter of the data, needs to * (-j)
+			begin
+				Sel4 <= 1;
+			end
+			if(tf_4_addr == 7)
+			begin
+				tf_4_addr <= 0;
+			end
+		end
+	end
+end
+
+//*****stage 5
+BF5 BF(.ar(Ar5),.ai(Ai5),.br(Br5),.bi(Bi5),.cr(Cr5),.ci(Ci5),.dr(Dr5),.di(Di5))
+TF5 TF(.tr(Tr5),.ti(Ti5),.wr(Wr5),.wi(Wi5),.sr(Sr5),.si(Si5))	//input the twiddle factor
+
+always @(posedge CLK or posedge RST)	//STAGE 5 STORE: loop of 4
+begin
+	if(RST)
+	begin
+		bf_5_en   <= 0;			//Disable stage 5's BF (stage 5)			
+		tf_5_en   <= 0;			//Disable stage 5's Twiddle Factor Module
+		input_5_flag <= 1;		//Initial mode: input from Sr0, Si0
+		RAM5_addr <= 0;			//Address Reset	
+	end
+	else if(stage5_input_en)		
+	begin
+		if(input_5_flag)							
+		begin
+			RAM5_r[RAM5_addr] <= Sr4;		//Fetch from the last stage's buffer
+			RAM5_i[RAM5_addr] <= Si4;		
+			RAM5_addr <= RAM5_addr+1;
+			if(RAM5_addr == 3)
+			begin	
+				bf_5_en   <= 1;		//Enable stage 5's BF (stage 0)			
+				tf_5_en   <= 1;		//Enable stage 5's Twiddle Factor Module
+				input_5_flag <= 0;
+				RAM5_addr <= 0;
+			end
+		end
+		else	//input_5_flag == 0, fetch from butterfly		
+		begin
+			RAM5_r[RAM5_addr] <= Dr5;		//From this stage's BF		
+			RAM5_i[RAM5_addr] <= Di5;
+			RAM5_addr <= RAM5_addr+1;
+			if(RAM5_addr == 3)
+			begin
+				bf_5_en <= 0;		//Disable stage 5's BF, repeat
+				RAM5_addr <= 0;
+				input_0_flag <= 1;
+			end
+		end
+	end
+end
+
+always @(negedge CLK or posedge RST)			//STAGE 5 Butterfly: loop of 4
+begin
+    if(RST) 
+    begin
+        bf_5_addr <= 0;   //Address signal for BF reset
+    end
+    else if(bf_5_en)
+	begin
+		Ar5 <= RAM5_r[bf_5_addr];		//From RAM anterior data
+		Ai5 <= RAM5_i[bf_5_addr];
+		Br5 <= Sr4;				//From tf4's output
+		Bi5 <= Si4;
+		bf_5_addr <= bf_5_addr+1;
+		if(bf_5_addr == 3)
+		begin
+			bf_5_addr <= 0;
+		end
+	end
+end
+
+	always @(posedge CLK or posedge RST)		//STAGE 5 Twiddle Factor: loop of 4
+begin
+	if(RST)
+	begin
+		tf_5_addr <= 0;			//Address reset
+		stage5_input_en <= 0;	//Disable input into stage2
+		tf_5_flag <= 0;			//control tf 
+	end
+	else if(tf_5_en)			//Open the stage 5's tf module
+	begin
+		stageF_input_en <= 1;	//Open the stage 4's RAM after data enters into tf module
+		if(bf_5_en)
+		begin
+			Tr5 <= Cr5;		//Addition part goes to tf module
+			Ti5 <= Ci5;
+			tf_5_addr <= tf_5_addr + 1;
+			if(tf_5_flag == 0)	//CC, * W(0,0,0...)
+			begin
+				Wr5 <= 1;
+				Wi5 <= 0;
+			end
+			else				//DC,* W(0,1,2,3,...,15)			
+			begin
+				Wr5 <= tf_ROM5_r[tf_5_addr];		
+				Wi5 <= tf_ROM5_i[tf_5_addr];
+			end
+			if(tf_5_addr == 3)
+			begin
+				tf_5_addr <= 0;
+			end
+		end
+		else	//bf_5_en == 0, receiving data from RAM5
+		begin
+			Tr5 <= RAM5_r[tf_5_addr];
+			Ti5 <= RAM5_i[tf_5_addr];
+			tf_5_addr <= tf_5_addr + 1;
+			if(tf_5_flag == 0)	//CD,* W(0,2,4,...,30)
+			begin
+				Wr5 <= tf_ROM5_r[tf_5_addr*2];		
+				Wi5 <= tf_ROM5_i[tf_5_addr*2];
+			end
+			else				//DD,* W(0,3,6,...,45)
+			begin
+				Wr5 <= tf_ROM5_r[tf_5_addr*3];		
+				Wi5 <= tf_ROM5_i[tf_5_addr*3];
+			end
+			if(tf_5_addr == 3)
+			begin
+				tf_5_flag <= tf_5_flag+1;	//Switch flag after cycle of 8 	
+				tf_5_addr <= 0;
+			end
+		end
+	end
+end	
+	
 endmodule
