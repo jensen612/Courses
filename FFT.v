@@ -17,7 +17,7 @@ reg [15:0] RAM2_r [31:0];
 reg [15:0] RAM2_i [31:0];   // 32*16 bit
 reg [15:0] RAM3_r [15:0];   
 reg [15:0] RAM3_i [15:0];   // 16*16 bit
-reg [15:0] RAM4_r [7:0];
+ reg [15:0] RAM4_r [7:0];
 reg [15:0] RAM4_i [7:0];    // 8*16 bit
 reg [15:0] RAM5_r [3:0];
 reg [15:0] RAM5_i [3:0];    // 4*16 bit
@@ -62,9 +62,16 @@ end
 BF0 BF(.ar(Ar0),.ai(Ai0),.br(Br0),.bi(Bi0),.cr(Cr0),.ci(Ci0),.dr(Dr0),.di(Di0)) //Two inputs. Two outputs. C:Addition; D:Substraction
 TF0 TJ(.tr(Tr0),.ti(Ti0),.sel(Sel0),.sr(Sr0),.si(Si0))		//only needs to implement * (-j)
 
-always @(posedge CLK)		//STAGE 0 Store: starts at 0, loop of 256; Space: 128
+always @(posedge CLK or posedge RST)		//STAGE 0 Store: starts at 0, loop of 256; Space: 128
 begin
-	if(input_en)
+	if(RST)
+	begin
+		bf_0_en   <= 0;			//Disable this stage's BF (stage 0)			
+		tf_0_en   <= 0;			//Disable this stage's Twiddle Factor Module
+		input_0_flag <= 1;		//Initial mode: input from Data_in
+		RAM0_addr <= 0;			//Address Reset	
+	end
+	else if(input_en)
 	begin
 		if(input_0_flag == 1)		// Input data go into RAM 0  // if (input_0_flag == 1) input from Data_in  // if (input_0_flag == 0) input from BF0
 		begin
@@ -73,8 +80,8 @@ begin
 			RAM0_addr <= RAM0_addr+1;
 			if(RAM0_addr == 127)
 			begin	
-				bf_0_en   <= 1;	//Enable this stage's BF (stage 0)			
-				tf_0_en   <= 1;			//Enable this stage's Twiddle Factor Module
+				bf_0_en   <= 1;		//Enable this stage's BF (stage 0)			
+				tf_0_en   <= 1;		//Enable this stage's Twiddle Factor Module
 				input_0_flag <= 0;
 				RAM0_addr <= 0;
 			end
@@ -94,29 +101,34 @@ begin
 	end
 end
 
-always @(negedge CLK)		//STAGE 0 Butterfly: starts at 128, closes at 256; repeat
+always @(negedge CLK or posedge RST)		//STAGE 0 Butterfly: starts at 128, closes at 256; repeat
 begin
-    if(RAM0_addr == 127) 
+    if(RST) 
     begin
-        bf_0_addr <= 0;   //Address signal for BF
+        bf_0_addr <= 0;   //Address signal for BF reset
     end
-    
-	if(bf_0_en)
+    else if(bf_0_en)
 	begin
-		if(bf_0_addr < 128)
+		Ar0 <= RAM0_r[bf_0_addr];		//From RAM anterior data: 0, 1, 2, ..., 127
+		Ai0 <= RAM0_i[bf_0_addr];
+		Br0 <= Data_in_r;		//From input: 128, 129, ..., 255
+		Bi0 <= Data_in_i;
+		bf_0_addr <= bf_0_addr+1;
+		if(bf_0_addr == 127)
 		begin
-			Ar0 <= RAM0_r[bf_0_addr];		//From RAM anterior data: 0, 1, 2, ..., 127
-			Ai0 <= RAM0_i[bf_0_addr];
-			Br0 <= Data_in_r;		//From input: 128, 129, ..., 255
-			Bi0 <= Data_in_i;
-			bf_0_addr <= bf_0_addr+1;
+			bf_0_addr <= 0;
 		end
 	end
 end
 
-always @(posedge CLK)		//STAGE 0 Twiddle Factor: starts at 128, loop of 256
+always @(posedge CLK or posedge RST)		//STAGE 0 Twiddle Factor: starts at 128, loop of 256
 begin
-	if(tf_0_en)
+	if(RST)
+	begin
+		tf_0_addr <= 0;			//Address rest
+		stage1_input_en <= 0;	//Disable input into stage1
+	end
+	if(tf_0_en)					//Open the stage 0's tf module
 	begin
 		stage1_input_en <= 1;	//Open the stage 1's RAM after data enters into tf module
 		if(bf_0_en)
@@ -130,15 +142,23 @@ begin
 				tf_0_addr <= 0;
 			end
 		end
-		else
+		else	//bf_0_en == 0, receiving data from RAM0
 		begin
 			Tr0 <= RAM0_r[tf_0_addr];
 			Ti0 <= RAM0_i[tf_0_addr];
 			tf_0_addr <= tf_0_addr + 1;
 			if(tf_0_addr < 64)
+			begin
 				Sel0 <= 0;
+			end
 			else			//Last one quarter of the data, needs to * (-j)
+			begin
 				Sel0 <= 1;
+			end
+			if(tf_0_addr == 127)
+			begin
+				tf_0_addr <= 0;
+			end
 		end
 	end
 end
