@@ -86,7 +86,7 @@ begin
 				RAM0_addr <= 0;
 			end
 		end
-		else //input_0_flag == 0
+		else //input_0_flag == 0, fetch from butterfly
 		begin
 			RAM0_r[RAM0_addr] <= Dr0;		//Subtraction part goes back io RAM0,(0-128), (1-129)...(63-191)
 			RAM0_i[RAM0_addr] <= Di0;		
@@ -121,7 +121,7 @@ begin
 	end
 end
 
-always @(posedge CLK or posedge RST)		//STAGE 0 Twiddle Factor: starts at 128, loop of 256
+always @(posedge CLK or posedge RST)		//STAGE 0 Twiddle Factor: starts at 128, loop of 128
 begin
 	if(RST)
 	begin
@@ -166,88 +166,117 @@ end
 BF1 BF(.ar(Ar1),.ai(Ai1),.br(Br1),.bi(Bi1),.cr(Cr1),.ci(Ci1),.dr(Dr1),.di(Di1))
 TF1 TF(.tr(Tr1),.ti(Ti1),.wr(Wr1),.wi(Wi1),.sr(Sr1),.si(Si1))	//input the twiddle factor
 
-always @(posedge CLK)		//STAGE 1 STORE: starts at 129, loop of 128; Space: 64
+always @(posedge CLK or posedge RST)	//STAGE 1 STORE: starts at 129, loop of 128; Space: 64
 begin
-	if(stage1_ready)		
+	if(RST)
 	begin
-		if(k1 < 64)		
-		begin					
-			begin
-				RAM1_r[k1] <= Sr0;		//Fetch from the last stage's buffer
-				RAM1_i[k1] <= Si0;		
-			end
-			k1 <= k1+1;
-			if(k1 == 63)
+		bf_1_en   <= 0;			//Disable stage 1's BF (stage 1)			
+		tf_1_en   <= 0;			//Disable stage 1's Twiddle Factor Module
+		input_1_flag <= 1;		//Initial mode: input from Sr0, Si0
+		RAM1_addr <= 0;			//Address Reset	
+	end
+	else if(stage1_input_en)		
+	begin
+		if(input_1_flag)							
+		begin
+			RAM1_r[RAM1_addr] <= Sr0;		//Fetch from the last stage's buffer
+			RAM1_i[RAM1_addr] <= Si0;		
+			RAM1_addr <= RAM1_addr+1;
+			if(RAM1_addr == 63)
 			begin	
-				stage1_compute <= 1;	//Enable this stage's BF
-				l1 <= 0;
-				stage1_tf <= 1;			//Enable Twiddle Factor Module
-				t1 <= 0;
+				bf_1_en   <= 1;		//Enable stage 1's BF (stage 0)			
+				tf_1_en   <= 1;		//Enable stage 1's Twiddle Factor Module
+				input_1_flag <= 0;
+				RAM1_addr <= 0;
 			end
 		end
-		else if (k1 < 128)			
+		else	//input_1_flag == 0, fetch from butterfly		
 		begin
-			RAM1_r[k1-64] <= Dr1;		//From this stage's BF
-			RAM1_i[k1-64] <= Di1;
-			k1 <= k1+1;
-			if(k1 == 127)
+			RAM1_r[RAM1_addr] <= Dr1;		//From this stage's BF		
+			RAM1_i[RAM1_addr] <= Di1;
+			RAM1_addr <= RAM1_addr+1;
+			if(RAM1_addr == 63)
 			begin
-				stage1_compute <= 0;	//Disable this stage's BF, repeat
-				k1 <= 0;
+				bf_1_en <= 0;		//Disable stage 1's BF, repeat
+				RAM1_addr <= 0;
+				input_0_flag <= 1;
 			end
 		end
 	end
 end
 
-always @(negedge CLK)		//STAGE 1 Butterfly:
+always @(negedge CLK or posedge RST)	
 begin
-	if(stage1_compute)
+    if(RST) 
+    begin
+        bf_1_addr <= 0;   //Address signal for BF reset
+    end
+    else if(bf_1_en)
 	begin
-		if(l1 < 64)
+		Ar1 <= RAM1_r[bf_1_addr];		//From RAM anterior data: 0, 1, 2, ..., 127
+		Ai1 <= RAM1_i[bf_1_addr];
+		Br1 <= Sr0;						//From tf0's output
+		Bi1 <= Si0;
+		bf_1_addr <= bf_1_addr+1;
+		if(bf_1_addr == 63)
 		begin
-			Ar1 <= RAM1_r[l1];		//From this stage's RAM anterior data
-			Ai1 <= RAM1_i[l1];
-			Br1 <= Sr0;				//From last stage's buffer output	
-			Bi1 <= Si0;
-			l1 <= l1+1;
+			bf_1_addr <= 0;
 		end
 	end
 end
 
-always @(posedge CLK)		//STAGE 1 Twiddle Factor: 
+always @(posedge CLK or posedge RST)		//STAGE 1 Twiddle Factor
 begin
-	if(stage1_tf)
+	if(RST)
 	begin
-		stage2_ready <= 1;	//Open the stage 2's RAM after data enters into tf module
-		if(t1 < 64)			//CC, * W(0,0,0...)
+		tf_1_addr <= 0;			//Address reset
+		stage2_input_en <= 0;	//Disable input into stage2
+		tf_1_flag <= 0;
+	end
+	else if(tf_1_en)			//Open the stage 1's tf module
+	begin
+		stage2_input_en <= 1;	//Open the stage 2's RAM after data enters into tf module
+		if(bf_1_en)
 		begin
-			Tr1 <= Cr1;		//Addtion: (0+128+64+192,...)
+			Tr1 <= Cr1;		//Addition part goes to tf module: (0+128),(1+129),...(127+255)
 			Ti1 <= Ci1;
-			Wr1 <= 1;
-			Wi1 <= 0;
+			tf_1_addr <= tf_1_addr + 1;
+			if(tf_1_flag == 0)	//CC, * W(0,0,0...)
+			begin
+				Wr1 <= 1;
+				Wi1 <= 0;
+			end
+			else				//DC,* W(0,1,2,3,...,63)			
+			begin
+				Wr1 <= tf_ROM1[tf_1_addr];		
+				Wi1 <= tf_ROM1[tf_1_addr];
+			end
+			if(tf_1_addr == 63)
+			begin
+				tf_1_addr <= 0;
+			end
 		end
-		else if(t1 < 128)	//CD,* W(0,2,4,...,126)
+		else	//bf_1_en == 0, receiving data from RAM1
 		begin
-			Tr1 <= RAM1_r[t1-64];		//From this stage's RAM：(0+128-(64+192))...
-			Ti1 <= RAM1_i[t1-64];
-			Wr1 <= TwFr1[(t1-64)*2];	//Bad solution!!!(How to assign the address)?
-			Wi1 <= TwFi1[(t1-64)*2];
+			Tr1 <= RAM1_r[tf_1_addr];
+			Ti1 <= RAM1_i[tf_1_addr];
+			tf_1_addr <= tf_1_addr + 1;
+			if(tf_1_flag == 0)	//CD,* W(0,2,4,...,126)
+			begin
+				Wr1 <= tf_ROM1[tf_1_addr*2];		
+				Wi1 <= tf_ROM1[tf_1_addr*2];
+			end
+			else				//DD,* W(0,3,6,...,189)
+			begin
+				Wr1 <= tf_ROM1[tf_1_addr*3];		
+				Wi1 <= tf_ROM1[tf_1_addr*3];
+			end
+			if(tf_1_addr == 63)
+			begin
+				tf_1_flag <= tf_1_flag+1;	//Switch flag after cycle of 128 	
+				tf_1_addr <= 0;
+			end
 		end
-		else if (t1 < 192)	//DC,* W(0,1,2,3,...,63)
-		begin
-			Tr1 <= Cr1;		//Addtion: ((0-128)+(64-192),...)
-			Ti1 <= Ci1;
-			Wr1 <= TwFr1[t1-128];		//Bad solution!!!(How to assign the address)?
-			Wi1 <= TwFi1[t1-128];
-		end
-		else if (t1 < 256)	//DD,* W(0,3,6,...,189)
-		begin
-			Tr1 <= RAM1_r[t1-128];		//From this stage's RAM：(0-128-(64-192))...
-			Ti1 <= RAM1_i[t1-128];
-			Wr1 <= TwFr1[(t1-192)*3];	//Bad solution!!!(How to assign the address)?
-			Wi1 <= TwFi1[(t1-192)*3];
-		end
-		t1 <= t1 + 1;
 	end
 end
 
