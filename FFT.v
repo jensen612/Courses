@@ -38,10 +38,10 @@ begin
 	else
 end
 
-BF0 BF(.ar(Ar0),.ai(Ai0),.br(Br0),.bi(Bi0),.cr(Cr0),.ci(Ci0),.dr(Dr0),.di(Di0))
-TF0 TF(.tr(Tr0),.ti(Ti0),.sel(sel0),.sr(Sr0),.si(Si0))
+BF0 BF(.ar(Ar0),.ai(Ai0),.br(Br0),.bi(Bi0),.cr(Cr0),.ci(Ci0),.dr(Dr0),.di(Di0)) //Two inputs. Two outputs. C:Addition; D:Substraction
+TF0 TJ(.tr(Tr0),.ti(Ti0),.sel(Sel0),.sr(Sr0),.si(Si0))		//only needs to implement * (-j)
 
-always @(posedge CLK)		//STAGE 0 Store: 0-255 cycle, from input or this BF's substraction
+always @(posedge CLK)		//STAGE 0 Store: starts at 0, loop of 256; Space: 128
 begin
 	if(input_en)
 	begin
@@ -53,74 +53,75 @@ begin
 			if(k0 == 127)
 			begin	
 				stage0_compute <= 1;	//Enable this stage's BF
-				l0 <= 0;
-				stage1_tf <= 1;			//Enable this stage's Twiddle Factor Module
-				t0 <= 0;
+				l0 <= 0;				//Address signal for BF
+				stage0_tf <= 1;			//Enable this stage's Twiddle Factor Module
+				t0 <= 0;				//Address signal for TF
 			end
 		end
-		else if(k0 < 256)	//Input data directly BF with previous data, (0,128), (1,129)...(127,255)
+		else if(k0 < 256)	
 		begin
-			RAM0_r[k1-128] <= Dr0;		//Subtraction part goes back io RAM0,(0-128),(1-129)...(63-191)
-			RAM0_i[k1-128] <= Di0;		
+			RAM0_r[k0-128] <= Dr0;		//Subtraction part goes back io RAM0,(0-128), (1-129)...(63-191)
+			RAM0_i[k0-128] <= Di0;		
 			k0 <= k0+1;
 			if(k0 == 255)
 			begin
-				stage0_compute <= 0;	//Disable this stage's BF, repeat
+				stage0_compute <= 0;	//Disable this stage's BF
 				k0 <= 0;
 			end
 		end
 	end
 end
 
-always @(negedge CLK)		//STAGE 0 Butterfly: 128+256*t - 255+256*t cycle
+always @(negedge CLK)		//STAGE 0 Butterfly: starts at 128, closes at 256; repeat
 begin
 	if(stage0_compute)
 	begin
 		if(l0 < 128)
 		begin
-			Ar0 <= RAM0_r[l0];		//From RAM anterior data
+			Ar0 <= RAM0_r[l0];		//From RAM anterior data: 0, 1, 2, ..., 127
 			Ai0 <= RAM0_i[l0];
-			Br0 <= Data_in_r;		//From input
+			Br0 <= Data_in_r;		//From input: 128, 129, ..., 255
 			Bi0 <= Data_in_i;
 			l0 <= l0+1;
 		end
 	end
 end
 
-always @(posedge CLK)		//STAGE 0 Twiddle Factor: 
+always @(posedge CLK)		//STAGE 0 Twiddle Factor: starts at 128, loop of 256
 begin
 	if(stage0_tf)
 	begin
-		stage1_ready <= 1;
+		stage1_ready <= 1;	//Open the stage 1's RAM after data enters into tf module
 		if(t0 < 128)
 		begin
-			Tr0 <= Cr0;
+			Tr0 <= Cr0;		//Addition part goes to tf module: (0+128),(1+129),...(127+255)
 			Ti0 <= Ci0;
-			Sel <= 0; 	//Whether needs to * (-j)
+			Sel0 <= 0; 	
 		end
 		else
 		begin
 			Tr0 <= RAM0_r[t0-128];
 			Ti0 <= RAM0_i[t0-128];
-			if(t0 >= 192)
-				Sel <= ;
-		
+			if(t0 < 192)
+				Sel0 <= 0;
+			else			//Last one quarter of the data, needs to * (-j)
+				Sel0 <= 1;
 		end
-		t0 <= t0+1;
+		t0 <= t0+1;			//t0: "255" + 1 ="0"
 	end
 end
 
 BF1 BF(.ar(Ar1),.ai(Ai1),.br(Br1),.bi(Bi1),.cr(Cr1),.ci(Ci1),.dr(Dr1),.di(Di1))
-TF0 TF(.tr(Tr0),.ti(Ti0),.wr(Wr0),.wi(Wi0),.sr(Sr0),.si(Si0))
+TF1 TF(.tr(Tr1),.ti(Ti1),.wr(Wr1),.wi(Wi1),.sr(Sr1),.si(Si1))	//input the twiddle factor
 
-always @(posedge CLK)		//STAGE 1 STORE: 128-255 cycle
+always @(posedge CLK)		//STAGE 1 STORE: starts at 129, loop of 128; Space: 64
 begin
 	if(stage1_ready)		
 	begin
 		if(k1 < 64)		
 		begin					
 			begin
-				RAM1_r[k1] <= Sr0;	//Fetch from the last stage's buffer
+				RAM1_r[k1] <= Sr0;		//Fetch from the last stage's buffer
 				RAM1_i[k1] <= Si0;		
 			end
 			k1 <= k1+1;
@@ -129,9 +130,9 @@ begin
 				stage1_compute <= 1;	//Enable this stage's BF
 				l1 <= 0;
 				stage1_tf <= 1;			//Enable Twiddle Factor Module
-				k2 <= 0;
+				t1 <= 0;
 			end
-		endssds
+		end
 		else if (k1 < 128)			
 		begin
 			RAM1_r[k1-64] <= Dr1;		//From this stage's BF
@@ -146,7 +147,7 @@ begin
 	end
 end
 
-always @(negedge CLK)		//STAGE 1 Compute: 193 -256 cycle
+always @(negedge CLK)		//STAGE 1 Butterfly:
 begin
 	if(stage1_compute)
 	begin
@@ -154,16 +155,8 @@ begin
 		begin
 			Ar1 <= RAM1_r[l1];		//From this stage's RAM anterior data
 			Ai1 <= RAM1_i[l1];
-			if(f1)					//From last stage's BF
-			begin
-				Br1 <= Cr0;				
-				Bi1 <= Ci0;
-			end
-			else					//From last stage's RAM, should * (-j) (D)
-			begin
-				Br1 <= RAM0_r[l1+64];					
-				Bi1 <= RAM0_i[l1+64];
-			end
+			Br1 <= Sr0;				//From last stage's buffer output	
+			Bi1 <= Si0;
 			l1 <= l1+1;
 		end
 	end
@@ -171,175 +164,41 @@ end
 
 always @(posedge CLK)		//STAGE 1 Twiddle Factor: 
 begin
-	if(stage0_tf)
+	if(stage1_tf)
 	begin
-		stage1_ready <= 1;
-		if(t0 < 128)
+		stage2_ready <= 1;	//Open the stage 2's RAM after data enters into tf module
+		if(t1 < 64)			//CC, * W(0,0,0...)
 		begin
-			Tr0 <= Cr0;
-			Ti0 <= Ci0;
-			Sel <= ; 	//Whether needs to * (-j)
+			Tr1 <= Cr1;		//Addtion: (0+128+64+192,...)
+			Ti1 <= Ci1;
+			Wr1 <= 1;
+			Wi1 <= 0;
 		end
-		else
+		else if(t1 < 128)	//CD,* W(0,2,4,...,126)
 		begin
-			Tr0 <= RAM0_r[t0-128];
-			Ti0 <= RAM0_i[t0-128];
-			Sel <= ;
-		
+			Tr1 <= RAM1_r[t1-64];		//From this stage's RAM：(0+128-(64+192))...
+			Ti1 <= RAM1_i[t1-64];
+			Wr1 <= TwFr1[(t1-64)*2];	//Bad solution!!!(How to assign the address)?
+			Wi1 <= TwFi1[(t1-64)*2];
 		end
-		t0 <= t0+1;
+		else if (t1 < 192)	//DC,* W(0,1,2,3,...,63)
+		begin
+			Tr1 <= Cr1;		//Addtion: ((0-128)+(64-192),...)
+			Ti1 <= Ci1;
+			Wr1 <= TwFr1[t1-128];		//Bad solution!!!(How to assign the address)?
+			Wi1 <= TwFi1[t1-128];
+		end
+		else if (t1 < 256)	//DD,* W(0,3,6,...,189)
+		begin
+			Tr1 <= RAM1_r[t1-128];		//From this stage's RAM：(0-128-(64-192))...
+			Ti1 <= RAM1_i[t1-128];
+			Wr1 <= TwFr1[(t1-192)*3];	//Bad solution!!!(How to assign the address)?
+			Wi1 <= TwFi1[(t1-192)*3];
+		end
+		t1 <= t1 + 1;
 	end
 end
 
-BF2 BF(.ar(Ar2),.ai(Ai2),.br(Br2),.bi(Bi2),.cr(Cr2),.ci(Ci2),.dr(Dr2),.di(Di2))
+//repeat....
 
-always @(posedge CLK)		//STAGE 2 STORE
-begin
-	if(stage2_ready)		
-	begin
-		if(k2 < 32)					
-		begin
-			case(f2)
-			"00":		//From last stage's BF, Addition part goes to RAM2, should * W(k2*0),(CC)
-			begin
-				RAM2_r[k2] <= Cr1;	
-				RAM2_i[k2] <= Ci1;		
-			end
-			"01":		//From last stage' RAM, should * W(k2*2),(CD)
-			begin
-				RAM2_r[k2] <= RAM1_r[k2];		
-				RAM2_i[k2] <= RAM1_i[k2];
-			end
-			"10":		//From last stage's BF, Addition part goes to RAM2, should * W(k2*1),(DC)
-			begin
-				RAM2_r[k2] <= Cr1;	
-				RAM2_i[k2] <= Ci1;		
-			end
-			"11":		//From last stage' RAM, should * W(k2*3),(DD)
-			begin
-				RAM2_r[k2] <= RAM1_r[k2];		
-				RAM2_i[k2] <= RAM1_i[k2];
-			end
-			endcase
-			k2 <= k2+1;
-			if(k2 == 31)
-			begin	
-				stage2_compute <= 1;	//Enable this stage's BF
-				l2 <= 0;
-				stage3_ready <= 1;		//Enable next stage's RAM
-				k3 <= 0;
-				f2 <= f2 + 1;			//Change its source
-			end
-		end
-		else if (k2 < 64)			
-		begin
-			RAM2_r[k2-32] <= Dr2;		//From this stage's BF,
-			RAM2_i[k2-32] <= Di2;
-			k1 <= k1+1;
-			if(k2 == 63)
-			begin
-				stage2_compute <= 0;	//Disable this stage's BF, repeat
-				k2 <= 0;
-			end
-		end
-	end
-end
-
-always @(negedge CLK)		//STAGE 2 Compute
-begin
-	if(stage2_compute)
-	begin
-		if(l2 < 32)
-		begin
-			Ar2 <= RAM2_r[l2];		//From this stage's RAM anterior data
-			Ai2 <= RAM2_i[l2];
-			case(f2)
-			"00":					//From last stage's BF, * W((l2+32)*0) (CC)
-			begin
-				Br2 <= Cr1;				
-				Bi2 <= Ci1;
-			end
-			"01":					//From last stage's RAM, * W((l2+32)*2) (CD)
-			begin
-				Br2 <= RAM1_r[l2+32];				
-				Bi2 <= RAM1_i[l2+32];
-			end
-			"10":					//From last stage's BF, * W((l2+32)*1) (DC)
-			begin
-				Br2 <= Cr1;				
-				Bi2 <= Ci1;
-			end
-			"11":					//From last stage's RAM, * W((l2+32)*3) (DD)
-			begin
-				Br2 <= RAM1_r[l2+32];				
-				Bi2 <= RAM1_i[l2+32];
-			end
-			l2 <= l2+1;
-		end
-	end
-end
-
-BF3 BF(.ar(Ar3),.ai(Ai3),.br(Br3),.bi(Bi3),.cr(Cr3),.ci(Ci3),.dr(Dr3),.di(Di3))
-
-always @(posedge CLK)		//STAGE 3 STORE
-begin
-	if(stage3_ready)		
-	begin
-		if(k3 < 16)		
-		begin
-			if(f3)					
-			begin
-				RAM3_r[k3] <= Cr2;	 
-				RAM3_i[k3] <= Ci2;		
-			end
-			else					
-			begin					//Subtraction part goes from last stage
-				RAM3_r[k3] <= RAM2_r[k3];		
-				RAM3_i[k3] <= RAM2_i[k3];
-			end
-			k3 <= k3+1;
-			if(k3 == 15)
-			begin	
-				stage3_compute <= 1;	//Enable this stage's BF
-				l3 <= 0;
-				stage4_ready <= 1;		//Enable next stage's RAM
-				k3 <= 0;
-				f3 <= f3 + 1;			//Change its source
-			end
-		end
-		else if (k3 < 32)			
-		begin
-			RAM3_r[k3-64] <= Dr3;		//From this stage's BF
-			RAM3_i[k3-64] <= Di3;
-			k3 <= k3+1;
-			if(k3 == 127)
-			begin
-				stage3_compute <= 0;	//Disable this stage's BF, repeat
-				k3 <= 0;
-			end
-		end
-	end
-end
-
-always @(negedge CLK)		//STAGE 3 Compute
-begin
-	if(stage3_compute)
-	begin
-		if(l3 < 64)
-		begin
-			Ar3 <= RAM2_r[l3];		//From this stage's RAM anterior data
-			Ai3 <= RAM2_i[l3];
-			if(f1)					//From last stage's BF
-			begin
-				Br3 <= Cr2;				
-				Bi3 <= Ci2;
-			end
-			else					//From last stage's RAM, should * (-j) (D)
-			begin
-				Br3 <= RAM2_r[l3+64];					
-				Bi3 <= RAM2_i[l3+64];
-			end
-			l3 <= l3+1;
-		end
-	end
-end
+endmodule
