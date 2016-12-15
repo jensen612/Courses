@@ -654,7 +654,7 @@ begin
 	end
 end
 
-	always @(posedge CLK or posedge RST)		//STAGE 5 Twiddle Factor: loop of 4
+always @(posedge CLK or posedge RST)		//STAGE 5 Twiddle Factor: loop of 4
 begin
 	if(RST)
 	begin
@@ -850,13 +850,107 @@ end
 
 always @(negedge CLK or posedge RST)			//STAGE 7 Butterfly: loop of 1
 begin
-	if(RST == 0 & bf_7_en)
+	if(RST)
 	begin
+		output_RAM_en <= 0;
+	end	
+	else if(bf_7_en)
+	begin
+		output_RAM_en <= 1;
 		Ar7 <= RAM7_r;		//From RAM anterior data
 		Ai7 <= RAM7_i;
 		Br7 <= Sr6;		//From tf6's output
 		Bi7 <= Si6;
 	end
 end
-	
+
+//*****Output stage
+	always @(posedge CLK or posedge RST)	//output & truncate
+begin
+	if(RST)
+	begin
+		output_RAM_addr0 <= 0;
+		output_RAM_addr1 <= 128;
+		output_RAM_addr2 <= 64;
+		output_RAM_addr3 <= 192;
+		output_RAM_flag <= 0;
+	end
+	else if(output_RAM_en)   //0,128,64,192,1,129,65,129,3...
+	begin
+		case(output_RAM_flag)			//From Butterfly 7
+		"00":
+		begin
+			output_RAM_r[output_RAM_addr0] <= {Cr7[31], Cr[22:8]};	
+			output_RAM_i[output_RAM_addr0] <= {Cr7[31], Cr[22:8]};
+			output_RAM_addr0 <= output_RAM_addr0 + 1;	//0,1,2,3...
+			output_RAM_flag <= output_RAM_flag+1;	
+			if(output_RAM_addr0 == 0)		//output_buffer only used for one cycle
+			begin
+				output_buffer_en <= 0;	
+			end
+		end
+		"01":			//From RAM7
+		begin
+			output_RAM_r[output_RAM_addr1] <= {RAM7_r[31], RAM7_r[22:8]};
+			output_RAM_i[output_RAM_addr1] <= {RAM7_i[31], RAM7_i[22:8]};
+			output_RAM_addr1 <= output_RAM_addr1 + 1;
+			output_RAM_flag <= output_RAM_flag+1;		//128,129,130...
+		end	
+		"10":		//From Butterfly 7
+		begin
+			output_RAM_r[output_RAM_addr2] <= {Cr7[31], Cr[22:8]};
+			output_RAM_i[output_RAM_addr2] <= {Cr7[31], Cr[22:8]};
+			output_RAM_addr2 <= output_RAM_addr2 + 1;	//64,65,66...
+			output_RAM_flag <= output_RAM_flag+1;
+		end
+		"11":			//From RAM7
+		begin
+			output_RAM_r[output_RAM_addr3] <= {RAM7_r[31], RAM7_r[22:8]};
+			output_RAM_i[output_RAM_addr3] <= {RAM7_i[31], RAM7_i[22:8]};
+			output_RAM_addr3 <= output_RAM_addr3 + 1;	//192,193,194...
+			output_RAM_flag <= 0;
+			if(output_RAM_addr3 == 255)		//can be loaded into the output_buffer in parallel
+			begin
+				output_buffer_en <= 1;	
+			end
+		end	
+	end
+end
+
+always @(posedge CLK or posedge RST) 		//output_buffer_RAM: read the output_RAM in parallel
+begin
+	if(RST)
+	begin
+		output_en <= 0;
+	end
+	else if(output_buffer_en)
+	begin
+		output_en <= 1;
+		for(m = 0; m < 256; m = m + 1) 
+		begin
+			output_buffer_r[m] <= output_RAM_r[m];
+			output_buffer_i[m] <= output_RAM_i[m];		
+		end
+	end
+end
+			
+always @(posedge CLK or posedge RST)		//output stream
+	if(RST)
+	begin
+		output_ptr <= 0;		//output address pointer
+	end
+	else if(output_en)   
+	begin
+		data_o_r <= output_buffer_r[output_ptr];
+		data_o_i <= output_buffer_r[output_ptr];
+		output_ptr <= output_ptr+1;
+		if(output_ptr == 255)
+		begin
+			output_ptr <= 0;
+		end
+	end
 endmodule
+
+assign Data_out_r = data_o_r;
+assign Data_out_i = data_o_i;
+			
