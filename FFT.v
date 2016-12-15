@@ -708,5 +708,155 @@ begin
 		end
 	end
 end	
+
+// ***** stage 6
+BF6 BF(.ar(Ar6),.ai(Ai6),.br(Br6),.bi(Bi6),.cr(Cr6),.ci(Ci6),.dr(Dr6),.di(Di6)) //Two inputs. Two outputs. C:Addition; D:Substraction
+TF6 TJ(.tr(Tr6),.ti(Ti6),.sel(Sel6),.sr(Sr6),.si(Si6))		//only needs to implement * (-j)
+
+always @(posedge CLK or posedge RST)		//STAGE 6 Store: loop of 2
+begin
+	if(RST)
+	begin
+		bf_6_en   <= 0;			//Disable this stage's BF (stage 6)			
+		tf_6_en   <= 0;			//Disable this stage's Twiddle Factor Module
+		input_6_flag <= 1;		//Initial mode: input from Data_in
+		RAM6_addr <= 0;			//Address Reset	
+	end
+	else if(input_en)
+	begin
+		if(input_6_flag == 1)		// Input data go into RAM 6   
+		begin
+			RAM6_r[RAM6_addr] <= Sr5;  
+			RAM6_i[RAM6_addr] <= Si5;  
+			RAM6_addr <= RAM6_addr+1;
+			if(RAM6_addr == 1)
+			begin	
+				bf_6_en   <= 1;		//Enable this stage's BF (stage 6)			
+				tf_6_en   <= 1;		//Enable this stage's Twiddle Factor Module
+				input_6_flag <= 0;
+				RAM6_addr <= 0;
+			end
+		end
+		else //input_6_flag == 0, fetch from butterfly
+		begin
+			RAM6_r[RAM6_addr] <= Dr6;		//Subtraction part goes back io RAM6
+			RAM6_i[RAM6_addr] <= Di6;		
+			RAM6_addr <= RAM6_addr+1;
+			if(RAM6_addr == 1)
+			begin
+				bf_6_en <= 0;	//Disable this stage's BF
+				RAM6_addr <= 0;
+				input_6_flag <= 1;
+			end
+		end
+	end
+end
+
+always @(negedge CLK or posedge RST)		//STAGE 6 Butterfly: loop of 2
+begin
+    if(RST) 
+    begin
+        bf_6_addr <= 0;   //Address signal for BF reset
+    end
+	else if(bf_6_en)
+	begin
+		Ar6 <= RAM0_r[bf_6_addr];	//From RAM anterior data: 
+		Ai6 <= RAM0_i[bf_6_addr];
+		Br6 <= Sr5;		
+		Bi6 <= Si5;			//From stage 3 buffer
+		bf_6_addr <= bf_6_addr+1;
+		if(bf_6_addr == 1)
+		begin
+			bf_6_addr <= 0;
+		end
+	end
+end
+
+always @(posedge CLK or posedge RST)		//STAGE 6 Twiddle Factor: loop of 2
+begin
+	if(RST)
+	begin
+		tf_6_addr <= 0;			//Address rest
+		stage7_input_en <= 0;	//Disable input into stage3
+	end
+	else if(tf_6_en)					//Open the stage 6's tf module
+	begin
+		stage7_input_en <= 1;	//Open the stage 1's RAM after data enters into tf module
+		if(bf_6_en)
+		begin
+			Tr6 <= Cr6;		//Addition part goes to tf module
+			Ti6 <= Ci6;
+			Sel6 <= 0; 	
+			tf_6_addr <= tf_6_addr + 1;
+			if(tf_6_addr == 1)
+			begin
+				tf_6_addr <= 0;
+			end
+		end
+		else	//bf_6_en == 0, receiving data from RAM6
+		begin
+			Tr6 <= RAM6_r[tf_6_addr];
+			Ti6 <= RAM6_i[tf_6_addr];
+			tf_6_addr <= tf_6_addr + 1;
+			if(tf_6_addr < 1)		//tf_6_addr == 0, sel6 = 0
+			begin
+				Sel6 <= 0;
+			end
+			else				//tf_6_addr == 1, sel6 = 1
+			begin		
+				Sel6 <= 1;
+			end
+			if(tf_6_addr == 1)
+			begin
+				tf_6_addr <= 0;
+			end
+		end
+	end
+end
+
+//*****stage 7
+BF7 BF(.ar(Ar7),.ai(Ai7),.br(Br7),.bi(Bi7),.cr(Cr7),.ci(Ci7),.dr(Dr7),.di(Di7))
+//No need for TF module
+//No need for address
+
+always @(posedge CLK or posedge RST)	//STAGE 7 STORE: loop of 1
+begin
+	if(RST)
+	begin
+		bf_7_en   <= 0;			//Disable stage 7's BF (stage 7)			
+		tf_7_en   <= 0;			//Disable stage 7's Twiddle Factor Module
+		input_7_flag <= 1;		//Initial mode: input from Sr0, Si0
+	end
+	else if(stage7_input_en)		
+	begin
+		if(input_7_flag)							
+		begin
+			RAM7_r <= Sr6;		//Fetch from the last stage's buffer
+			RAM7_i <= Si6;		
+			bf_7_en   <= 1;		//Enable stage 7's BF (stage 0)			
+			tf_7_en   <= 1;		//Enable stage 7's Twiddle Factor Module
+			input_7_flag <= 0;
+		end
+		else	//input_7_flag == 0, fetch from butterfly		
+		begin
+			RAM7_r[RAM7_addr] <= Dr7;		//From this stage's BF		
+			RAM7_i[RAM7_addr] <= Di7;
+			bf_7_en <= 0;		//Disable stage 7's BF, repeat
+			input_0_flag <= 1;
+			end
+		end
+	end
+end
+
+always @(negedge CLK or posedge RST)			//STAGE 7 Butterfly: loop of 1
+begin
+	if(RST == 0 & bf_7_en)
+	begin
+		Ar7 <= RAM7_r;		//From RAM anterior data
+		Ai7 <= RAM7_i;
+		Br7 <= Sr6;		//From tf6's output
+		Bi7 <= Si6;
+	end
+end
 	
 endmodule
