@@ -128,7 +128,7 @@ begin
 		tf_0_addr <= 0;			//Address rest
 		stage1_input_en <= 0;	//Disable input into stage1
 	end
-	if(tf_0_en)					//Open the stage 0's tf module
+	else if(tf_0_en)					//Open the stage 0's tf module
 	begin
 		stage1_input_en <= 1;	//Open the stage 1's RAM after data enters into tf module
 		if(bf_0_en)
