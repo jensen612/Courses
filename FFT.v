@@ -1,13 +1,32 @@
-module fft_256(data_in_r, data_in_i, RST, CLK, data_out_r, data_out_in);
+module fft_256(Data_in_r, Data_in_i, RST, CLK, Data_out_r, Data_out_in);
 
-input [15:0] data_in_r, data_in_i;
-input RST, CLK;
+// ========== change
+input [15:0] Data_in_r;
+input [15:0] Data_in_i;
+input RST;
+input CLK;
 
-output [15:0] data_out_r, data_out_i;
+output [15:0] Data_out_r;
+output [15:0] Data_out_i;  // ========== d -> D
 
-reg [6:0] RAM0_r[15:0], RAM0_i[15:0];  //128
-reg [5:0] RAM1_r[15:0], RAM1_i[15:0];  //64
-reg [4:0] RAM2_r[15:0], RAM2_i[15:0];  //32
+reg [15:0] RAM0_r [127:0];
+reg [15:0] RAM0_i [127:0];  // 128*16 bit
+reg [15:0] RAM1_r [63:0];
+reg [15:0] RAM1_i [63:0];   // 64*16 bit
+reg [15:0] RAM2_r [31:0];
+reg [15:0] RAM2_i [31:0];   // 32*16 bit
+reg [15:0] RAM3_r [15:0];   
+reg [15:0] RAM3_i [15:0];   // 16*16 bit
+reg [15:0] RAM4_r [7:0];
+reg [15:0] RAM4_i [7:0];    // 8*16 bit
+reg [15:0] RAM5_r [3:0];
+reg [15:0] RAM5_i [3:0];    // 4*16 bit
+reg [15:0] RAM6_r [1:0];   
+reg [15:0] RAM6_i [1:0];    // 2*16 bit
+reg [15:0] RAM7_r;
+reg [15:0] RAM7_i;          // 1*16 bit
+// ========== change
+
 reg [7:0] RAM_out[15:0];
 reg [7:0] k0, 
 reg f1, f3, f5, f7;
@@ -16,6 +35,7 @@ reg input_en, stage0_compute;
 	stage1_ready, stage1_compute,
 	stage2_ready, stage2_compute;
 
+// ***** reset
 always @(posedge CLK)
 begin
 	if(RST)
@@ -38,6 +58,7 @@ begin
 	else
 end
 
+// ***** stage 0
 BF0 BF(.ar(Ar0),.ai(Ai0),.br(Br0),.bi(Bi0),.cr(Cr0),.ci(Ci0),.dr(Dr0),.di(Di0)) //Two inputs. Two outputs. C:Addition; D:Substraction
 TF0 TJ(.tr(Tr0),.ti(Ti0),.sel(Sel0),.sr(Sr0),.si(Si0))		//only needs to implement * (-j)
 
@@ -45,28 +66,29 @@ always @(posedge CLK)		//STAGE 0 Store: starts at 0, loop of 256; Space: 128
 begin
 	if(input_en)
 	begin
-		if(k0 < 128)		//Input data go into RAM 0
+		if(input_0_flag == 1)		// Input data go into RAM 0  // if (input_0_flag == 1) input from Data_in  // if (input_0_flag == 0) input from BF0
 		begin
-			RAM0_r[k0] <= Data_in_r;
-			RAM0_i[k0] <= Data_in_i;
-			k0 <= k0+1;
-			if(k0 == 127)
+			RAM0_r[RAM0_addr] <= Data_in_r;  
+			RAM0_i[RAM0_addr] <= Data_in_i;   
+			RAM0_addr <= RAM0_addr+1;
+			if(RAM0_addr == 127)
 			begin	
-				stage0_compute <= 1;	//Enable this stage's BF
-				l0 <= 0;				//Address signal for BF
-				stage0_tf <= 1;			//Enable this stage's Twiddle Factor Module
-				t0 <= 0;				//Address signal for TF
+				bf_0_en   <= 1;	//Enable this stage's BF (stage 0)			
+				tf_0_en   <= 1;			//Enable this stage's Twiddle Factor Module
+				input_0_flag <= 0;
+				RAM0_addr <= 0;
 			end
 		end
-		else if(k0 < 256)	
+		else //input_0_flag == 0
 		begin
-			RAM0_r[k0-128] <= Dr0;		//Subtraction part goes back io RAM0,(0-128), (1-129)...(63-191)
-			RAM0_i[k0-128] <= Di0;		
-			k0 <= k0+1;
-			if(k0 == 255)
+			RAM0_r[RAM0_addr] <= Dr0;		//Subtraction part goes back io RAM0,(0-128), (1-129)...(63-191)
+			RAM0_i[RAM0_addr] <= Di0;		
+			RAM0_addr <= RAM0_addr+1;
+			if(RAM0_addr == 127)
 			begin
-				stage0_compute <= 0;	//Disable this stage's BF
-				k0 <= 0;
+				bf_0_en <= 0;	//Disable this stage's BF
+				RAM0_addr <= 0;
+				input_0_flag <= 1;
 			end
 		end
 	end
@@ -74,40 +96,50 @@ end
 
 always @(negedge CLK)		//STAGE 0 Butterfly: starts at 128, closes at 256; repeat
 begin
-	if(stage0_compute)
+    if(RAM0_addr == 127) 
+    begin
+        bf_0_addr <= 0;   //Address signal for BF
+    end
+    
+	if(bf_0_en)
 	begin
-		if(l0 < 128)
+		if(bf_0_addr < 128)
 		begin
-			Ar0 <= RAM0_r[l0];		//From RAM anterior data: 0, 1, 2, ..., 127
-			Ai0 <= RAM0_i[l0];
+			Ar0 <= RAM0_r[bf_0_addr];		//From RAM anterior data: 0, 1, 2, ..., 127
+			Ai0 <= RAM0_i[bf_0_addr];
 			Br0 <= Data_in_r;		//From input: 128, 129, ..., 255
 			Bi0 <= Data_in_i;
-			l0 <= l0+1;
+			bf_0_addr <= bf_0_addr+1;
 		end
 	end
 end
 
 always @(posedge CLK)		//STAGE 0 Twiddle Factor: starts at 128, loop of 256
 begin
-	if(stage0_tf)
+	if(tf_0_en)
 	begin
-		stage1_ready <= 1;	//Open the stage 1's RAM after data enters into tf module
-		if(t0 < 128)
+		stage1_input_en <= 1;	//Open the stage 1's RAM after data enters into tf module
+		if(bf_0_en)
 		begin
 			Tr0 <= Cr0;		//Addition part goes to tf module: (0+128),(1+129),...(127+255)
 			Ti0 <= Ci0;
 			Sel0 <= 0; 	
+			tf_0_addr <= tf_0_addr + 1;
+			if(tf_0_addr == 127)
+			begin
+				tf_0_addr <= 0;
+			end
 		end
 		else
 		begin
-			Tr0 <= RAM0_r[t0-128];
-			Ti0 <= RAM0_i[t0-128];
-			if(t0 < 192)
+			Tr0 <= RAM0_r[tf_0_addr];
+			Ti0 <= RAM0_i[tf_0_addr];
+			tf_0_addr <= tf_0_addr + 1;
+			if(tf_0_addr < 64)
 				Sel0 <= 0;
 			else			//Last one quarter of the data, needs to * (-j)
 				Sel0 <= 1;
 		end
-		t0 <= t0+1;			//t0: "255" + 1 ="0"
 	end
 end
 
