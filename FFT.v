@@ -1014,7 +1014,7 @@ begin
 			begin
 				bf_3_en <= 0;		//Disable stage 3's BF, repeat
 				RAM3_addr <= 0;
-				input_0_flag <= 1;
+				input_3_flag <= 1;
 			end
 		end
 	end
@@ -1239,7 +1239,7 @@ begin
 			begin
 				bf_5_en <= 0;		//Disable stage 5's BF, repeat
 				RAM5_addr <= 0;
-				input_0_flag <= 1;
+				input_5_flag <= 1;
 			end
 		end
 	end
@@ -1453,7 +1453,7 @@ begin
 			RAM7_r <= Dr7;		//From this stage's BF		
 			RAM7_i <= Di7;
 			bf_7_en <= 0;		//Disable stage 7's BF, repeat
-			input_0_flag <= 1;
+			input_7_flag <= 1;
 		end
 	end
 end
