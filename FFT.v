@@ -51,7 +51,17 @@ assign sr = {aug_sr[63], aug_sr[46:16]};
 assign si = {aug_si[63], aug_si[46:16]};
 endmodule
 
-module fft_256(Data_in_r, Data_in_i, RST, CLK, input_en, Data_out_r, Data_out_i, out_ready);
+module fft_256(Data_in_r, Data_in_i, RST, CLK, input_en, Data_out_r, Data_out_i, out_ready, out_ptr, out_en
+, s1_en
+, s2_en
+, s3_en
+, s4_en
+, s5_en
+, s6_en
+, s7_en
+, or_en
+, ob_en
+, or_addr);
 
 // ========== change
 input [15:0] Data_in_r;
@@ -63,6 +73,18 @@ input input_en;
 output [15:0] Data_out_r;
 output [15:0] Data_out_i;  // ========== d -> D
 output out_ready;
+output out_ptr;
+output out_en;
+output s1_en;
+output s2_en;
+output s3_en;
+output s4_en;
+output s5_en;
+output s6_en;
+output s7_en;
+output or_en;
+output ob_en;
+output [6:0] or_addr;
 
 integer m;
 //stage 0
@@ -248,7 +270,7 @@ reg tf_7_en;
 reg input_7_flag;
 //output
 reg output_RAM_en;
-reg [5:0] output_RAM_addr;
+reg [6:0] output_RAM_addr;
 reg [15:0] output_RAM_r [255:0];
 reg [15:0] output_RAM_i [255:0];	//256*16 bit
 reg [1:0] output_RAM_flag;
@@ -648,7 +670,18 @@ assign tf_ROM_i[189] = 32'h0000FF4E;
 assign Data_out_r = data_o_r;
 assign Data_out_i = data_o_i;
 assign out_ready = output_ready;
-
+assign out_ptr = output_ptr;
+assign out_en = output_en;
+assign s1_en = stage1_input_en;
+assign s2_en = stage2_input_en;
+assign s3_en = stage3_input_en;
+assign s4_en = stage4_input_en;
+assign s5_en = stage5_input_en;
+assign s6_en = stage6_input_en;
+assign s7_en = stage7_input_en;
+assign or_en = output_RAM_en;
+assign ob_en = output_buffer_en;
+assign or_addr = output_RAM_addr;
 // ***** stage 0
 		BF BF0(.ar(Ar0),.ai(Ai0),.br(Br0),.bi(Bi0),.cr(Cr0),.ci(Ci0),.dr(Dr0),.di(Di0)); //Two inputs. Two outputs. C:Addition; D:Substraction
 		TJ TF0(.tr(Tr0),.ti(Ti0),.sel(Sel0),.sr(Sr0),.si(Si0));		//only needs to implement * (-j)
@@ -885,7 +918,7 @@ begin
 		input_2_flag <= 1;		//Initial mode: input from Data_in
 		RAM2_addr <= 0;			//Address Reset	
 	end
-	else if(input_en)
+	else if(stage2_input_en)
 	begin
 		if(input_2_flag == 1)		// Input data go into RAM 2   
 		begin
@@ -1045,7 +1078,7 @@ begin
 	if(RST)
 	begin
 		tf_3_addr <= 0;			//Address reset
-		stage3_input_en <= 0;	//Disable input into stage2
+		stage4_input_en <= 0;	//Disable input into stage3
 		tf_3_flag <= 0;			//control tf 
 	end
 	else if(tf_3_en)			//Open the stage 3's tf module
@@ -1110,7 +1143,7 @@ begin
 		input_4_flag <= 1;		//Initial mode: input from Data_in
 		RAM4_addr <= 0;			//Address Reset	
 	end
-	else if(input_en)
+	else if(stage4_input_en)
 	begin
 		if(input_4_flag == 1)		// Input data go into RAM 4   
 		begin
@@ -1270,7 +1303,7 @@ begin
 	if(RST)
 	begin
 		tf_5_addr <= 0;			//Address reset
-		stage5_input_en <= 0;	//Disable input into stage2
+		stage6_input_en <= 0;	//Disable input into stage6
 		tf_5_flag <= 0;			//control tf 
 	end
 	else if(tf_5_en)			//Open the stage 5's tf module
@@ -1333,7 +1366,7 @@ begin
 		input_6_flag <= 1;		//Initial mode: input from Data_in
 		RAM6_addr <= 0;			//Address Reset	
 	end
-	else if(input_en)
+	else if(stage6_input_en)
 	begin
 		if(input_6_flag == 1)		// Input data go into RAM 6   
 		begin
@@ -1481,33 +1514,34 @@ begin
 	begin
 		output_RAM_addr <= 0;
 		output_RAM_flag <= 0;
+		output_buffer_en <= 0;
 	end
 	else if(output_RAM_en)   //0,128,64,192,1,129,65,129,3...
 	begin
 		case(output_RAM_flag)			//From Butterfly 7, //0,1,2,3...
-		"00":
+		0:
 		begin
 			output_RAM_r[output_RAM_addr] <= {Cr7[31], Cr7[22:8]};	
-			output_RAM_i[output_RAM_addr] <= {Cr7[31], Cr7[22:8]};
+			output_RAM_i[output_RAM_addr] <= {Ci7[31], Ci7[22:8]};
 			output_RAM_flag <= output_RAM_flag+1;	
 			if(output_RAM_addr == 0)		//output_buffer only used for one cycle
 			begin
 				output_buffer_en <= 0;	
 			end
 		end
-		"01":			//From RAM7 //128,129,130...
+		1:			//From RAM7 //128,129,130...
 		begin
 			output_RAM_r[output_RAM_addr+128] <= {RAM7_r[31], RAM7_r[22:8]};
 			output_RAM_i[output_RAM_addr+128] <= {RAM7_i[31], RAM7_i[22:8]};
 			output_RAM_flag <= output_RAM_flag+1;		
 		end	
-		"10":		//From Butterfly 7 //64,65,66...
+		2:		//From Butterfly 7 //64,65,66...
 		begin
 			output_RAM_r[output_RAM_addr+64] <= {Cr7[31], Cr7[22:8]};
-			output_RAM_i[output_RAM_addr+64] <= {Cr7[31], Cr7[22:8]};	
+			output_RAM_i[output_RAM_addr+64] <= {Ci7[31], Ci7[22:8]};	
 			output_RAM_flag <= output_RAM_flag+1;
 		end
-		"11":			//From RAM7 //192,193,194...
+		3:			//From RAM7 //192,193,194...
 		begin
 			output_RAM_r[output_RAM_addr+192] <= {RAM7_r[31], RAM7_r[22:8]};
 			output_RAM_i[output_RAM_addr+192] <= {RAM7_i[31], RAM7_i[22:8]};
@@ -1516,6 +1550,7 @@ begin
 			if(output_RAM_addr == 63)		//can be loaded into the output_buffer in parallel
 			begin
 				output_buffer_en <= 1;	
+				output_RAM_addr <= 0;
 			end
 		end
 		endcase
@@ -1537,7 +1572,7 @@ begin
 			output_buffer_i[m] <= output_RAM_i[m];		
 		end
 	end
-	else
+	else if(output_ptr == 255)
 	begin
 		output_en <= 0;
 	end
@@ -1556,7 +1591,7 @@ begin
 			output_ready <= 1;
 		end
 		data_o_r <= output_buffer_r[output_ptr];
-		data_o_i <= output_buffer_r[output_ptr];
+		data_o_i <= output_buffer_i[output_ptr];
 		output_ptr <= output_ptr+1;
 		if(output_ptr == 255)
 		begin
@@ -1566,4 +1601,3 @@ begin
 	end
 end
 endmodule
-
