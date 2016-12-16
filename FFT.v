@@ -51,13 +51,14 @@ assign sr = {aug_sr[63], aug_sr[46:16]};
 assign si = {aug_si[63], aug_si[46:16]};
 endmodule
 
-module fft_256(Data_in_r, Data_in_i, RST, CLK, Data_out_r, Data_out_i, out_ready);
+module fft_256(Data_in_r, Data_in_i, RST, CLK, input_en, Data_out_r, Data_out_i, out_ready);
 
 // ========== change
 input [15:0] Data_in_r;
 input [15:0] Data_in_i;
 input RST;
 input CLK;
+input input_en;
 
 output [15:0] Data_out_r;
 output [15:0] Data_out_i;  // ========== d -> D
@@ -65,7 +66,6 @@ output out_ready;
 
 integer m;
 //stage 0
-reg input_en;
 reg [31:0] RAM0_r [127:0];
 reg [31:0] RAM0_i [127:0];  // 128*32 bit
 reg [6:0] RAM0_addr;
@@ -648,14 +648,6 @@ assign tf_ROM_i[189] = 32'h0000FF4E;
 assign Data_out_r = data_o_r;
 assign Data_out_i = data_o_i;
 assign out_ready = output_ready;
-// ***** reset
-always @(posedge CLK or posedge RST)
-begin
-	if(RST)
-	begin
-		input_en <= 1;			//reset for new input
-	end
-end
 
 // ***** stage 0
 		BF BF0(.ar(Ar0),.ai(Ai0),.br(Br0),.bi(Bi0),.cr(Cr0),.ci(Ci0),.dr(Dr0),.di(Di0)); //Two inputs. Two outputs. C:Addition; D:Substraction
