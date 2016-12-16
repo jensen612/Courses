@@ -1,4 +1,4 @@
-			
+	
 module BF(ar, ai, br, bi, cr, ci, dr, di);
 input  [31:0] ar;
 input  [31:0] ai;
@@ -51,7 +51,7 @@ assign sr = {aug_sr[63], aug_sr[46:16]};
 assign si = {aug_si[63], aug_si[46:16]};
 endmodule
 
-module fft_256(Data_in_r, Data_in_i, RST, CLK, Data_out_r, Data_out_in);
+module fft_256(Data_in_r, Data_in_i, RST, CLK, Data_out_r, Data_out_i);
 
 // ========== change
 input [15:0] Data_in_r;
@@ -62,6 +62,7 @@ input CLK;
 output [15:0] Data_out_r;
 output [15:0] Data_out_i;  // ========== d -> D
 
+integer m;
 //stage 0
 reg input_en;
 reg [31:0] RAM0_r [127:0];
@@ -79,7 +80,7 @@ reg [31:0] Dr0;
 reg [31:0] Di0;
 reg [31:0] Tr0;
 reg [31:0] Ti0;
-reg [31:0] Sel0;
+reg Sel0;
 reg [31:0] Sr0; 
 reg [31:0] Si0;
 reg bf_0_en;
@@ -127,7 +128,7 @@ reg [31:0] Dr2;
 reg [31:0] Di2;
 reg [31:0] Tr2;
 reg [31:0] Ti2;
-reg [31:0] Sel2;
+reg Sel2;
 reg [31:0] Sr2; 
 reg [31:0] Si2;
 reg bf_2_en;
@@ -175,7 +176,7 @@ reg [31:0] Dr4;
 reg [31:0] Di4;
 reg [31:0] Tr4;
 reg [31:0] Ti4;
-reg [31:0] Sel4;
+reg Sel4;
 reg [31:0] Sr4; 
 reg [31:0] Si4;
 reg bf_4_en;
@@ -223,7 +224,7 @@ reg [31:0] Dr6;
 reg [31:0] Di6;
 reg [31:0] Tr6;
 reg [31:0] Ti6;
-reg [31:0] Sel6;
+reg Sel6;
 reg [31:0] Sr6; 
 reg [31:0] Si6;
 reg bf_6_en;
@@ -251,12 +252,12 @@ reg [15:0] output_RAM_r [255:0];
 reg [15:0] output_RAM_i [255:0];	//256*16 bit
 reg [1:0] output_RAM_flag;
 reg output_buffer_en;
-reg [15:0] output_bufer_r [255:0];
+reg [15:0] output_buffer_r [255:0];
 reg [15:0] output_buffer_i [255:0];	//256*16 bit
 reg output_en;
 reg [7:0] output_ptr;
 reg [15:0] data_o_r;
-reg [15:0] data_i_r;
+reg [15:0] data_o_i;
 // ========== change
 wire [31:0] tf_ROM_r[189:0];
 assign tf_ROM_r[0] = 32'h00010000;
@@ -654,8 +655,8 @@ begin
 end
 
 // ***** stage 0
-		BF0 BF(.ar(Ar0),.ai(Ai0),.br(Br0),.bi(Bi0),.cr(Cr0),.ci(Ci0),.dr(Dr0),.di(Di0)); //Two inputs. Two outputs. C:Addition; D:Substraction
-		TF0 TJ(.tr(Tr0),.ti(Ti0),.sel(Sel0),.sr(Sr0),.si(Si0));		//only needs to implement * (-j)
+		BF BF0(.ar(Ar0),.ai(Ai0),.br(Br0),.bi(Bi0),.cr(Cr0),.ci(Ci0),.dr(Dr0),.di(Di0)); //Two inputs. Two outputs. C:Addition; D:Substraction
+		TJ TF0(.tr(Tr0),.ti(Ti0),.sel(Sel0),.sr(Sr0),.si(Si0));		//only needs to implement * (-j)
 
 always @(posedge CLK or posedge RST)		//STAGE 0 Store: starts at 0, loop of 256; Space: 128
 begin
@@ -759,8 +760,8 @@ begin
 end
 
 //*****stage 1
-	BF1 BF(.ar(Ar1),.ai(Ai1),.br(Br1),.bi(Bi1),.cr(Cr1),.ci(Ci1),.dr(Dr1),.di(Di1));
-	TF1 TF(.tr(Tr1),.ti(Ti1),.wr(Wr1),.wi(Wi1),.sr(Sr1),.si(Si1));	//input the twiddle factor
+	BF BF1(.ar(Ar1),.ai(Ai1),.br(Br1),.bi(Bi1),.cr(Cr1),.ci(Ci1),.dr(Dr1),.di(Di1));
+	TF TF1(.tr(Tr1),.ti(Ti1),.wr(Wr1),.wi(Wi1),.sr(Sr1),.si(Si1));	//input the twiddle factor
 
 always @(posedge CLK or posedge RST)	//STAGE 1 STORE: starts at 129, loop of 64; Space: 64
 begin
@@ -877,8 +878,8 @@ begin
 end
 
 // ***** stage 2
-	BF2 BF(.ar(Ar2),.ai(Ai2),.br(Br2),.bi(Bi2),.cr(Cr2),.ci(Ci2),.dr(Dr2),.di(Di2)); //Two inputs. Two outputs. C:Addition; D:Substraction
-	TF2 TJ(.tr(Tr2),.ti(Ti2),.sel(Sel2),.sr(Sr2),.si(Si2));		//only needs to implement * (-j)
+	BF BF2(.ar(Ar2),.ai(Ai2),.br(Br2),.bi(Bi2),.cr(Cr2),.ci(Ci2),.dr(Dr2),.di(Di2)); //Two inputs. Two outputs. C:Addition; D:Substraction
+	TJ TF2(.tr(Tr2),.ti(Ti2),.sel(Sel2),.sr(Sr2),.si(Si2));		//only needs to implement * (-j)
 
 always @(posedge CLK or posedge RST)		//STAGE 2 Store: loop of 32
 begin
@@ -982,8 +983,8 @@ begin
 end
 
 //*****stage 3
-	BF3 BF(.ar(Ar3),.ai(Ai3),.br(Br3),.bi(Bi3),.cr(Cr3),.ci(Ci3),.dr(Dr3),.di(Di3));
-	TF3 TF(.tr(Tr3),.ti(Ti3),.wr(Wr3),.wi(Wi3),.sr(Sr3),.si(Si3));	//input the twiddle factor
+	BF BF3(.ar(Ar3),.ai(Ai3),.br(Br3),.bi(Bi3),.cr(Cr3),.ci(Ci3),.dr(Dr3),.di(Di3));
+	TF TF3(.tr(Tr3),.ti(Ti3),.wr(Wr3),.wi(Wi3),.sr(Sr3),.si(Si3));	//input the twiddle factor
 
 always @(posedge CLK or posedge RST)	//STAGE 3 STORE: loop of 16
 begin
@@ -1102,8 +1103,8 @@ end
 //repeat....
 	
 // ***** stage 4
-	BF4 BF(.ar(Ar4),.ai(Ai4),.br(Br4),.bi(Bi4),.cr(Cr4),.ci(Ci4),.dr(Dr4),.di(Di4)); //Two inputs. Two outputs. C:Addition; D:Substraction
-	TF4 TJ(.tr(Tr4),.ti(Ti4),.sel(Sel4),.sr(Sr4),.si(Si4));	//only needs to implement * (-j)
+	BF BF4(.ar(Ar4),.ai(Ai4),.br(Br4),.bi(Bi4),.cr(Cr4),.ci(Ci4),.dr(Dr4),.di(Di4)); //Two inputs. Two outputs. C:Addition; D:Substraction
+	TJ TF4(.tr(Tr4),.ti(Ti4),.sel(Sel4),.sr(Sr4),.si(Si4));	//only needs to implement * (-j)
 
 always @(posedge CLK or posedge RST)		//STAGE 4 Store: loop of 8
 begin
@@ -1207,8 +1208,8 @@ begin
 end
 
 //*****stage 5
-	BF5 BF(.ar(Ar5),.ai(Ai5),.br(Br5),.bi(Bi5),.cr(Cr5),.ci(Ci5),.dr(Dr5),.di(Di5));
-	TF5 TF(.tr(Tr5),.ti(Ti5),.wr(Wr5),.wi(Wi5),.sr(Sr5),.si(Si5));	//input the twiddle factor
+	BF BF5(.ar(Ar5),.ai(Ai5),.br(Br5),.bi(Bi5),.cr(Cr5),.ci(Ci5),.dr(Dr5),.di(Di5));
+	TF TF5(.tr(Tr5),.ti(Ti5),.wr(Wr5),.wi(Wi5),.sr(Sr5),.si(Si5));	//input the twiddle factor
 
 always @(posedge CLK or posedge RST)	//STAGE 5 STORE: loop of 4
 begin
@@ -1279,7 +1280,7 @@ begin
 	end
 	else if(tf_5_en)			//Open the stage 5's tf module
 	begin
-		stageF_input_en <= 1;	//Open the stage 4's RAM after data enters into tf module
+		stage6_input_en <= 1;	//Open the stage 6's RAM after data enters into tf module
 		if(bf_5_en)
 		begin
 			Tr5 <= Cr5;		//Addition part goes to tf module
@@ -1325,8 +1326,8 @@ begin
 end	
 
 // ***** stage 6
-	BF6 BF(.ar(Ar6),.ai(Ai6),.br(Br6),.bi(Bi6),.cr(Cr6),.ci(Ci6),.dr(Dr6),.di(Di6)); //Two inputs. Two outputs. C:Addition; D:Substraction
-	TF6 TJ(.tr(Tr6),.ti(Ti6),.sel(Sel6),.sr(Sr6),.si(Si6));		//only needs to implement * (-j)
+	BF BF6(.ar(Ar6),.ai(Ai6),.br(Br6),.bi(Bi6),.cr(Cr6),.ci(Ci6),.dr(Dr6),.di(Di6)); //Two inputs. Two outputs. C:Addition; D:Substraction
+	TJ TF6(.tr(Tr6),.ti(Ti6),.sel(Sel6),.sr(Sr6),.si(Si6));		//only needs to implement * (-j)
 
 always @(posedge CLK or posedge RST)		//STAGE 6 Store: loop of 2
 begin
@@ -1430,7 +1431,7 @@ begin
 end
 
 //*****stage 7
-	BF7 BF(.ar(Ar7),.ai(Ai7),.br(Br7),.bi(Bi7),.cr(Cr7),.ci(Ci7),.dr(Dr7),.di(Di7));
+	BF BF7(.ar(Ar7),.ai(Ai7),.br(Br7),.bi(Bi7),.cr(Cr7),.ci(Ci7),.dr(Dr7),.di(Di7));
 //No need for TF module
 //No need for address
 
@@ -1491,8 +1492,8 @@ begin
 		case(output_RAM_flag)			//From Butterfly 7, //0,1,2,3...
 		"00":
 		begin
-			output_RAM_r[output_RAM_addr] <= {Cr7[31], Cr[22:8]};	
-			output_RAM_i[output_RAM_addr] <= {Cr7[31], Cr[22:8]};
+			output_RAM_r[output_RAM_addr] <= {Cr7[31], Cr7[22:8]};	
+			output_RAM_i[output_RAM_addr] <= {Cr7[31], Cr7[22:8]};
 			output_RAM_flag <= output_RAM_flag+1;	
 			if(output_RAM_addr == 0)		//output_buffer only used for one cycle
 			begin
@@ -1507,8 +1508,8 @@ begin
 		end	
 		"10":		//From Butterfly 7 //64,65,66...
 		begin
-			output_RAM_r[output_RAM_addr+64] <= {Cr7[31], Cr[22:8]};
-			output_RAM_i[output_RAM_addr+64] <= {Cr7[31], Cr[22:8]};	
+			output_RAM_r[output_RAM_addr+64] <= {Cr7[31], Cr7[22:8]};
+			output_RAM_i[output_RAM_addr+64] <= {Cr7[31], Cr7[22:8]};	
 			output_RAM_flag <= output_RAM_flag+1;
 		end
 		"11":			//From RAM7 //192,193,194...
@@ -1561,5 +1562,4 @@ begin
 	end
 end
 endmodule
-
 
