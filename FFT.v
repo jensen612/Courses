@@ -791,7 +791,7 @@ begin
 			begin
 				bf_1_en <= 0;		//Disable stage 1's BF, repeat
 				RAM1_addr <= 0;
-				input_0_flag <= 1;
+				input_1_flag <= 1;
 			end
 		end
 	end
