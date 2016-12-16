@@ -77,7 +77,7 @@ input input_en;
 output signed [15:0] Data_out_r;
 output signed [15:0] Data_out_i;  // ========== d -> D
 output out_ready;
-output out_ptr;
+output [7:0] out_ptr;
 output out_en;
 output s1_en;
 output s2_en;
@@ -1495,7 +1495,7 @@ begin
 		end
 		else	//input_7_flag == 0, fetch from butterfly		
 		begin
-			RAM7_r <= Dr7;		//From this stage's BF		
+			F7_r <= Dr7;		//From this stage's BF		
 			RAM7_i <= Di7;
 			bf_7_en <= 0;		//Disable stage 7's BF, repeat
 			input_7_flag <= 1;
@@ -1541,7 +1541,7 @@ begin
 				output_buffer_en <= 0;	
 			end
 		end
-		1:			//From RAM7 //128,129,130...
+		1:			//From RAM7 //128,129,130...f
 		begin
 			output_RAM_r[output_RAM_addr+128] <= {RAM7_r[31], RAM7_r[22:8]};
 			output_RAM_i[output_RAM_addr+128] <= {RAM7_i[31], RAM7_i[22:8]};
