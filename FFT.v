@@ -1,32 +1,32 @@
 	
 module BF(ar, ai, br, bi, cr, ci, dr, di);
-input  [31:0] ar;
-input  [31:0] ai;
-input  [31:0] br;
-input  [31:0] bi;
-output [31:0] cr;
-output [31:0] ci;
-output [31:0] dr;
-output [31:0] di;
+input signed [31:0] ar;
+input signed  [31:0] ai;
+input signed  [31:0] br;
+input signed  [31:0] bi;
+output signed [31:0] cr;
+output signed [31:0] ci;
+output signed [31:0] dr;
+output signed [31:0] di;
 
-assign cr = ar + br;
-assign ci = ai + bi;
-assign dr = ar - br;
-assign di = ai - bi;
+assign cr = $signed(ar) + $signed(br);
+assign ci = $signed(ai) + $signed(bi);
+assign dr = $signed(ar) - $signed(br);
+assign di = $signed(ai) - $signed(bi);
 endmodule
 
 module TJ(tr, ti, sel, sr, si);		//only needs to implement * (-j)
     // input output
-input [31:0] tr;
-input [31:0] ti;
+input signed [31:0] tr;
+input signed [31:0] ti;
 input sel;
 
-output [31:0] sr;
-output [31:0] si;
+output signed [31:0] sr;
+output signed [31:0] si;
 
     // calculation
-wire [63:0] aug_minus_tr = $signed(32'hFFFF_FFFF) * $signed(tr);
-wire [31:0] minus_tr = {aug_minus_tr[63], aug_minus_tr[46:16]};
+wire signed [63:0] aug_minus_tr = $signed(32'hFFFF_FFFF) * $signed(tr);
+wire signed [31:0] minus_tr = {aug_minus_tr[63], aug_minus_tr[46:16]};
 
 assign sr = sel ?       ti : tr;
 assign si = sel ? minus_tr : ti;
@@ -35,17 +35,17 @@ endmodule
 
 module TF(tr, ti, wr, wi, sr, si);
     // input output
-input [31:0] tr;
-input [31:0] ti;
-input [31:0] wr;
-input [31:0] wi;
+input signed [31:0] tr;
+input signed [31:0] ti;
+input signed [31:0] wr;
+input signed [31:0] wi;
 
-output [31:0] sr;
-output [31:0] si;
+output signed [31:0] sr;
+output signed [31:0] si;
 
     // calculation
-wire [63:0] aug_sr = $signed(tr) * $signed(wr) - $signed(ti) * $signed(wi);
-wire [63:0] aug_si = $signed(tr) * $signed(wi) + $signed(ti) * $signed(wr);
+wire signed [63:0] aug_sr = $signed(tr) * $signed(wr) - $signed(ti) * $signed(wi);
+wire signed [63:0] aug_si = $signed(tr) * $signed(wi) + $signed(ti) * $signed(wr);
 
 assign sr = {aug_sr[63], aug_sr[46:16]};
 assign si = {aug_si[63], aug_si[46:16]};
@@ -61,17 +61,21 @@ module fft_256(Data_in_r, Data_in_i, RST, CLK, input_en, Data_out_r, Data_out_i,
 , s7_en
 , or_en
 , ob_en
-, or_addr);
+, or_addr
+, cr_0
+, ci_0
+, dr_0
+, di_0);
 
 // ========== change
-input [15:0] Data_in_r;
-input [15:0] Data_in_i;
+input signed [15:0] Data_in_r;
+input signed [15:0] Data_in_i;
 input RST;
 input CLK;
 input input_en;
 
-output [15:0] Data_out_r;
-output [15:0] Data_out_i;  // ========== d -> D
+output signed [15:0] Data_out_r;
+output signed [15:0] Data_out_i;  // ========== d -> D
 output out_ready;
 output out_ptr;
 output out_en;
@@ -85,205 +89,209 @@ output s7_en;
 output or_en;
 output ob_en;
 output [6:0] or_addr;
+output signed [31:0] cr_0;
+output signed [31:0] ci_0;
+output signed [31:0] dr_0;
+output signed [31:0] di_0;
 
 integer m;
 //stage 0
-reg [31:0] RAM0_r [127:0];
-reg [31:0] RAM0_i [127:0];  // 128*32 bit
+reg signed [31:0] RAM0_r [127:0];
+reg signed [31:0] RAM0_i [127:0];  // 128*32 bit
 reg [6:0] RAM0_addr;
 reg [6:0] bf_0_addr;
 reg [6:0] tf_0_addr;
-reg [31:0] Ar0;
-reg [31:0] Ai0;
-reg [31:0] Br0;
-reg [31:0] Bi0; 
-wire [31:0] Cr0;
-wire [31:0] Ci0;
-wire [31:0] Dr0; 
-wire [31:0] Di0;
-reg [31:0] Tr0;
-reg [31:0] Ti0;
+reg signed [31:0] Ar0;
+reg signed [31:0] Ai0;
+reg signed [31:0] Br0;
+reg signed [31:0] Bi0; 
+wire signed [31:0] Cr0;
+wire signed [31:0] Ci0;
+wire signed [31:0] Dr0; 
+wire signed [31:0] Di0;
+reg signed [31:0] Tr0;
+reg signed [31:0] Ti0;
 reg Sel0;
-wire [31:0] Sr0; 
-wire [31:0] Si0;
+wire signed [31:0] Sr0; 
+wire signed [31:0] Si0;
 reg bf_0_en;
 reg tf_0_en;
 reg input_0_flag;
 //stage 1
 reg stage1_input_en;
-reg [31:0] RAM1_r [63:0];
-reg [31:0] RAM1_i [63:0];   // 64*32 bit
+reg signed [31:0] RAM1_r [63:0];
+reg signed [31:0] RAM1_i [63:0];   // 64*32 bit
 reg [5:0] RAM1_addr;
 reg [5:0] bf_1_addr;
 reg [5:0] tf_1_addr;
-reg [31:0] Ar1;
-reg [31:0] Ai1;
-reg [31:0] Br1;
-reg [31:0] Bi1; 
-wire [31:0] Cr1;
-wire [31:0] Ci1;
-wire [31:0] Dr1; 
-wire [31:0] Di1;
-reg [31:0] Tr1;
-reg [31:0] Ti1;
-reg [31:0] Wr1;
-reg [31:0] Wi1;
-wire [31:0] Sr1; 
-wire [31:0] Si1;	
+reg signed [31:0] Ar1;
+reg signed [31:0] Ai1;
+reg signed [31:0] Br1;
+reg signed [31:0] Bi1; 
+wire signed [31:0] Cr1;
+wire signed [31:0] Ci1;
+wire signed [31:0] Dr1; 
+wire signed [31:0] Di1;
+reg signed [31:0] Tr1;
+reg signed [31:0] Ti1;
+reg signed [31:0] Wr1;
+reg signed [31:0] Wi1;
+wire signed [31:0] Sr1; 
+wire signed [31:0] Si1;	
 reg bf_1_en;
 reg tf_1_en;
 reg tf_1_flag;
 reg input_1_flag;	
 //stage 2	
 reg stage2_input_en;
-reg [31:0] RAM2_r [31:0];
-reg [31:0] RAM2_i [31:0];   // 32*32 bit
+reg signed [31:0] RAM2_r [31:0];
+reg signed [31:0] RAM2_i [31:0];   // 32*32 bit
 reg [4:0] RAM2_addr;
 reg [4:0] bf_2_addr;
 reg [4:0] tf_2_addr;
-reg [31:0] Ar2;
-reg [31:0] Ai2;
-reg [31:0] Br2;
-reg [31:0] Bi2; 
-wire [31:0] Cr2;
-wire [31:0] Ci2;
-wire [31:0] Dr2; 
-wire [31:0] Di2;
-reg [31:0] Tr2;
-reg [31:0] Ti2;
+reg signed [31:0] Ar2;
+reg signed [31:0] Ai2;
+reg signed [31:0] Br2;
+reg signed [31:0] Bi2; 
+wire signed [31:0] Cr2;
+wire signed [31:0] Ci2;
+wire signed [31:0] Dr2; 
+wire signed [31:0] Di2;
+reg signed [31:0] Tr2;
+reg signed [31:0] Ti2;
 reg Sel2;
-wire [31:0] Sr2; 
-wire [31:0] Si2;
+wire signed [31:0] Sr2; 
+wire signed [31:0] Si2;
 reg bf_2_en;
 reg tf_2_en;
 reg input_2_flag;
 //stage 3
 reg stage3_input_en;
-reg [31:0] RAM3_r [15:0];   
-reg [31:0] RAM3_i [15:0];   // 16*32 bit
+reg signed [31:0] RAM3_r [15:0];   
+reg signed [31:0] RAM3_i [15:0];   // 16*32 bit
 reg [3:0] RAM3_addr;
 reg [3:0] bf_3_addr;
 reg [3:0] tf_3_addr;
-reg [31:0] Ar3;
-reg [31:0] Ai3;
-reg [31:0] Br3;
-reg [31:0] Bi3; 
-wire [31:0] Cr3;
-wire [31:0] Ci3;
-wire [31:0] Dr3; 
-wire [31:0] Di3;
-reg [31:0] Tr3;
-reg [31:0] Ti3;
-reg [31:0] Wr3;
-reg [31:0] Wi3;
-wire [31:0] Sr3; 
-wire [31:0] Si3;	
+reg signed [31:0] Ar3;
+reg signed [31:0] Ai3;
+reg signed [31:0] Br3;
+reg signed [31:0] Bi3; 
+wire signed [31:0] Cr3;
+wire signed [31:0] Ci3;
+wire signed [31:0] Dr3; 
+wire signed [31:0] Di3;
+reg signed [31:0] Tr3;
+reg signed [31:0] Ti3;
+reg signed [31:0] Wr3;
+reg signed [31:0] Wi3;
+wire signed [31:0] Sr3; 
+wire signed [31:0] Si3;	
 reg bf_3_en;
 reg tf_3_en;
 reg tf_3_flag;
 reg input_3_flag;	
 //stage 4
 reg stage4_input_en;
-reg [31:0] RAM4_r [7:0];
-reg [31:0] RAM4_i [7:0];    // 8*32 bit
+reg signed [31:0] RAM4_r [7:0];
+reg signed [31:0] RAM4_i [7:0];    // 8*32 bit
 reg [2:0] RAM4_addr;
 reg [2:0] bf_4_addr;
 reg [2:0] tf_4_addr;
-reg [31:0] Ar4;
-reg [31:0] Ai4;
-reg [31:0] Br4;
-reg [31:0] Bi4; 
-wire [31:0] Cr4;
-wire [31:0] Ci4;
-wire [31:0] Dr4; 
-wire [31:0] Di4;
-reg [31:0] Tr4;
-reg [31:0] Ti4;
+reg signed [31:0] Ar4;
+reg signed  [31:0] Ai4;
+reg signed [31:0] Br4;
+reg signed [31:0] Bi4; 
+wire signed [31:0] Cr4;
+wire signed [31:0] Ci4;
+wire signed [31:0] Dr4; 
+wire signed [31:0] Di4;
+reg signed [31:0] Tr4;
+reg signed [31:0] Ti4;
 reg Sel4;
-wire [31:0] Sr4; 
-wire [31:0] Si4;
+wire signed [31:0] Sr4; 
+wire signed [31:0] Si4;
 reg bf_4_en;
 reg tf_4_en;
 reg input_4_flag;
 //stage 5
 reg stage5_input_en;
-reg [31:0] RAM5_r [3:0];
-reg [31:0] RAM5_i [3:0];    // 4*32 bit
+reg signed [31:0] RAM5_r [3:0];
+reg signed [31:0] RAM5_i [3:0];    // 4*32 bit
 reg [1:0] RAM5_addr;
 reg [1:0] bf_5_addr;
 reg [1:0] tf_5_addr;
-reg [31:0] Ar5;
-reg [31:0] Ai5;
-reg [31:0] Br5;
-reg [31:0] Bi5; 
-wire [31:0] Cr5;
-wire [31:0] Ci5;
-wire [31:0] Dr5; 
-wire [31:0] Di5;
-reg [31:0] Tr5;
-reg [31:0] Ti5;
-reg [31:0] Wr5;
-reg [31:0] Wi5;
-wire [31:0] Sr5; 
-wire [31:0] Si5;	
+reg signed [31:0] Ar5;
+reg signed [31:0] Ai5;
+reg signed [31:0] Br5;
+reg signed [31:0] Bi5; 
+wire signed [31:0] Cr5;
+wire signed [31:0] Ci5;
+wire signed [31:0] Dr5; 
+wire signed [31:0] Di5;
+reg signed [31:0] Tr5;
+reg signed [31:0] Ti5;
+reg signed [31:0] Wr5;
+reg signed [31:0] Wi5;
+wire signed [31:0] Sr5; 
+wire signed [31:0] Si5;	
 reg bf_5_en;
 reg tf_5_en;
 reg tf_5_flag;
 reg input_5_flag;	
 //stage 6
 reg stage6_input_en;
-reg [31:0] RAM6_r [1:0];   
-reg [31:0] RAM6_i [1:0];    // 2*32 bit
+reg signed [31:0] RAM6_r [1:0];   
+reg signed [31:0] RAM6_i [1:0];    // 2*32 bit
 reg RAM6_addr;
 reg bf_6_addr;
 reg tf_6_addr;
-reg [31:0] Ar6;
-reg [31:0] Ai6;
-reg [31:0] Br6;
-reg [31:0] Bi6; 
-wire [31:0] Cr6;
-wire [31:0] Ci6;
-wire [31:0] Dr6; 
-wire [31:0] Di6;
-reg [31:0] Tr6;
-reg [31:0] Ti6;
+reg signed [31:0] Ar6;
+reg signed [31:0] Ai6;
+reg signed [31:0] Br6;
+reg signed [31:0] Bi6; 
+wire signed [31:0] Cr6;
+wire signed [31:0] Ci6;
+wire signed [31:0] Dr6; 
+wire signed [31:0] Di6;
+reg signed [31:0] Tr6;
+reg signed [31:0] Ti6;
 reg Sel6;
-wire [31:0] Sr6; 
-wire [31:0] Si6;
+wire signed [31:0] Sr6; 
+wire signed [31:0] Si6;
 reg bf_6_en;
 reg tf_6_en;
 reg input_6_flag;
 //stage 7
 reg stage7_input_en;
-reg [31:0] RAM7_r;
-reg [31:0] RAM7_i;          // 1*32 bit
-reg [31:0] Ar7;
-reg [31:0] Ai7;
-reg [31:0] Br7;
-reg [31:0] Bi7; 
-wire [31:0] Cr7;
-wire [31:0] Ci7;
-wire [31:0] Dr7; 
-wire [31:0] Di7;
+reg signed [31:0] RAM7_r;
+reg signed [31:0] RAM7_i;          // 1*32 bit
+reg signed [31:0] Ar7;
+reg signed [31:0] Ai7;
+reg signed [31:0] Br7;
+reg signed [31:0] Bi7; 
+wire signed [31:0] Cr7;
+wire signed [31:0] Ci7;
+wire signed [31:0] Dr7; 
+wire signed [31:0] Di7;
 reg bf_7_en;
 reg tf_7_en;
 reg input_7_flag;
 //output
 reg output_RAM_en;
 reg [6:0] output_RAM_addr;
-reg [15:0] output_RAM_r [255:0];
-reg [15:0] output_RAM_i [255:0];	//256*16 bit
+reg signed [15:0] output_RAM_r [255:0];
+reg signed [15:0] output_RAM_i [255:0];	//256*16 bit
 reg [1:0] output_RAM_flag;
 reg output_buffer_en;
-reg [15:0] output_buffer_r [255:0];
-reg [15:0] output_buffer_i [255:0];	//256*16 bit
+reg signed [15:0] output_buffer_r [255:0];
+reg signed [15:0] output_buffer_i [255:0];	//256*16 bit
 reg output_en;
-reg [7:0] output_ptr;
 reg output_ready;
-reg [15:0] data_o_r;
-reg [15:0] data_o_i;
+reg signed [15:0] data_o_r;
+reg signed [15:0] data_o_i;
+reg [7:0] output_ptr;
 // ========== change
-wire [31:0] tf_ROM_r[189:0];
+wire signed [31:0] tf_ROM_r[189:0];
 assign tf_ROM_r[0] = 32'h00010000;
 assign tf_ROM_r[1] = 32'h0000FFEC;
 assign tf_ROM_r[2] = 32'h0000FFB1;
@@ -475,7 +483,7 @@ assign tf_ROM_r[187] = 32'hFFFFE0AA;
 assign tf_ROM_r[188] = 32'hFFFFE6E9;
 assign tf_ROM_r[189] = 32'hFFFFED2B;
 
-wire [31:0] tf_ROM_i[189:0];
+wire signed [31:0] tf_ROM_i[189:0];
 assign tf_ROM_i[0] = 32'h00000000;
 assign tf_ROM_i[1] = 32'hFFFFF9B8;
 assign tf_ROM_i[2] = 32'hFFFFF371;
@@ -682,6 +690,10 @@ assign s7_en = stage7_input_en;
 assign or_en = output_RAM_en;
 assign ob_en = output_buffer_en;
 assign or_addr = output_RAM_addr;
+assign cr_0 = Cr0;
+assign ci_0 = Ci0;
+assign dr_0 = Dr0;
+assign di_0 = Di0;
 // ***** stage 0
 		BF BF0(.ar(Ar0),.ai(Ai0),.br(Br0),.bi(Bi0),.cr(Cr0),.ci(Ci0),.dr(Dr0),.di(Di0)); //Two inputs. Two outputs. C:Addition; D:Substraction
 		TJ TF0(.tr(Tr0),.ti(Ti0),.sel(Sel0),.sr(Sr0),.si(Si0));		//only needs to implement * (-j)
@@ -1181,8 +1193,8 @@ begin
     end
     else if(bf_4_en)
 	begin
-		Ar4 <= RAM0_r[bf_4_addr];	//From RAM anterior data: 
-		Ai4 <= RAM0_i[bf_4_addr];
+		Ar4 <= RAM4_r[bf_4_addr];	//From RAM anterior data: 
+		Ai4 <= RAM4_i[bf_4_addr];
 		Br4 <= Sr3;		
 		Bi4 <= Si3;			//From stage 3 buffer
 		bf_4_addr <= bf_4_addr+1;
@@ -1404,8 +1416,8 @@ begin
     end
 	else if(bf_6_en)
 	begin
-		Ar6 <= RAM0_r[bf_6_addr];	//From RAM anterior data: 
-		Ai6 <= RAM0_i[bf_6_addr];
+		Ar6 <= RAM6_r[bf_6_addr];	//From RAM anterior data: 
+		Ai6 <= RAM6_i[bf_6_addr];
 		Br6 <= Sr5;		
 		Bi6 <= Si5;			//From stage 3 buffer
 		bf_6_addr <= bf_6_addr+1;
