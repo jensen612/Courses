@@ -190,7 +190,7 @@ reg tf_7_en;
 reg input_7_flag;
 //output
 reg output_RAM_en;
-reg [7:0] output_RAM_addr;
+reg [5:0] output_RAM_addr;
 reg [15:0] output_RAM_r [255:0];
 reg [15:0] output_RAM_i [255:0];	//256*16 bit
 reg [1:0] output_RAM_flag;
@@ -405,8 +405,8 @@ begin
 			end
 			else				//DC,* W(0,1,2,3,...,63)			
 			begin
-				Wr1 <= tf_ROM1_r[tf_1_addr];		
-				Wi1 <= tf_ROM1_i[tf_1_addr];
+				Wr1 <= tf_ROM_r[tf_1_addr];		
+				Wi1 <= tf_ROM_i[tf_1_addr];
 			end
 			if(tf_1_addr == 63)
 			begin
@@ -420,13 +420,13 @@ begin
 			tf_1_addr <= tf_1_addr + 1;
 			if(tf_1_flag == 0)	//CD,* W(0,2,4,...,126)
 			begin
-				Wr1 <= tf_ROM1_r[tf_1_addr*2];		
-				Wi1 <= tf_ROM1_i[tf_1_addr*2];
+				Wr1 <= tf_ROM_r[tf_1_addr*2];		
+				Wi1 <= tf_ROM_i[tf_1_addr*2];
 			end
 			else				//DD,* W(0,3,6,...,189)
 			begin
-				Wr1 <= tf_ROM1_r[tf_1_addr*3];		
-				Wi1 <= tf_ROM1_i[tf_1_addr*3];
+				Wr1 <= tf_ROM_r[tf_1_addr*3];		
+				Wi1 <= tf_ROM_i[tf_1_addr*3];
 			end
 			if(tf_1_addr == 63)
 			begin
@@ -628,8 +628,8 @@ begin
 			end
 			else				//DC,* W(0,1,2,3,...,15)			
 			begin
-				Wr3 <= tf_ROM3_r[tf_3_addr];		
-				Wi3 <= tf_ROM3_i[tf_3_addr];
+				Wr3 <= tf_ROM_r[tf_3_addr*4];		
+				Wi3 <= tf_ROM_i[tf_3_addr*4];
 			end
 			if(tf_3_addr == 15)
 			begin
@@ -643,13 +643,13 @@ begin
 			tf_3_addr <= tf_3_addr + 1;
 			if(tf_3_flag == 0)	//CD,* W(0,2,4,...,30)
 			begin
-				Wr3 <= tf_ROM3_r[tf_3_addr*2];		
-				Wi3 <= tf_ROM3_i[tf_3_addr*2];
+				Wr3 <= tf_ROM_r[tf_3_addr*8];		
+				Wi3 <= tf_ROM_i[tf_3_addr*8];
 			end
 			else				//DD,* W(0,3,6,...,45)
 			begin
-				Wr3 <= tf_ROM3_r[tf_3_addr*3];		
-				Wi3 <= tf_ROM3_i[tf_3_addr*3];
+				Wr3 <= tf_ROM_r[tf_3_addr*12];		
+				Wi3 <= tf_ROM_i[tf_3_addr*12];
 			end
 			if(tf_3_addr == 15)
 			begin
@@ -853,8 +853,8 @@ begin
 			end
 			else				//DC,* W(0,1,2,3,...,15)			
 			begin
-				Wr5 <= tf_ROM5_r[tf_5_addr];		
-				Wi5 <= tf_ROM5_i[tf_5_addr];
+				Wr5 <= tf_ROM_r[tf_5_addr*16];		
+				Wi5 <= tf_ROM_i[tf_5_addr*16];
 			end
 			if(tf_5_addr == 3)
 			begin
@@ -868,13 +868,13 @@ begin
 			tf_5_addr <= tf_5_addr + 1;
 			if(tf_5_flag == 0)	//CD,* W(0,2,4,...,30)
 			begin
-				Wr5 <= tf_ROM5_r[tf_5_addr*2];		
-				Wi5 <= tf_ROM5_i[tf_5_addr*2];
+				Wr5 <= tf_ROM_r[tf_5_addr*32];		
+				Wi5 <= tf_ROM_i[tf_5_addr*32];
 			end
 			else				//DD,* W(0,3,6,...,45)
 			begin
-				Wr5 <= tf_ROM5_r[tf_5_addr*3];		
-				Wi5 <= tf_ROM5_i[tf_5_addr*3];
+				Wr5 <= tf_ROM_r[tf_5_addr*48];		
+				Wi5 <= tf_ROM_i[tf_5_addr*48];
 			end
 			if(tf_5_addr == 3)
 			begin
@@ -1045,47 +1045,41 @@ end
 begin
 	if(RST)
 	begin
-		output_RAM_addr0 <= 0;
-		output_RAM_addr1 <= 128;
-		output_RAM_addr2 <= 64;
-		output_RAM_addr3 <= 192;
+		output_RAM_addr <= 0;
 		output_RAM_flag <= 0;
 	end
 	else if(output_RAM_en)   //0,128,64,192,1,129,65,129,3...
 	begin
-		case(output_RAM_flag)			//From Butterfly 7
+		case(output_RAM_flag)			//From Butterfly 7, //0,1,2,3...
 		"00":
 		begin
-			output_RAM_r[output_RAM_addr0] <= {Cr7[31], Cr[22:8]};	
-			output_RAM_i[output_RAM_addr0] <= {Cr7[31], Cr[22:8]};
-			output_RAM_addr0 <= output_RAM_addr0 + 1;	//0,1,2,3...
+			output_RAM_r[output_RAM_addr] <= {Cr7[31], Cr[22:8]};	
+			output_RAM_i[output_RAM_addr] <= {Cr7[31], Cr[22:8]};
 			output_RAM_flag <= output_RAM_flag+1;	
-			if(output_RAM_addr0 == 0)		//output_buffer only used for one cycle
+			if(output_RAM_addr == 0)		//output_buffer only used for one cycle
 			begin
 				output_buffer_en <= 0;	
 			end
 		end
-		"01":			//From RAM7
+		"01":			//From RAM7 //128,129,130...
 		begin
-			output_RAM_r[output_RAM_addr1] <= {RAM7_r[31], RAM7_r[22:8]};
-			output_RAM_i[output_RAM_addr1] <= {RAM7_i[31], RAM7_i[22:8]};
-			output_RAM_addr1 <= output_RAM_addr1 + 1;
-			output_RAM_flag <= output_RAM_flag+1;		//128,129,130...
+			output_RAM_r[output_RAM_addr+128] <= {RAM7_r[31], RAM7_r[22:8]};
+			output_RAM_i[output_RAM_addr+128] <= {RAM7_i[31], RAM7_i[22:8]};
+			output_RAM_flag <= output_RAM_flag+1;		
 		end	
-		"10":		//From Butterfly 7
+		"10":		//From Butterfly 7 //64,65,66...
 		begin
-			output_RAM_r[output_RAM_addr2] <= {Cr7[31], Cr[22:8]};
-			output_RAM_i[output_RAM_addr2] <= {Cr7[31], Cr[22:8]};
-			output_RAM_addr2 <= output_RAM_addr2 + 1;	//64,65,66...
+			output_RAM_r[output_RAM_addr+64] <= {Cr7[31], Cr[22:8]};
+			output_RAM_i[output_RAM_addr+64] <= {Cr7[31], Cr[22:8]};	
 			output_RAM_flag <= output_RAM_flag+1;
 		end
-		"11":			//From RAM7
+		"11":			//From RAM7 //192,193,194...
 		begin
-			output_RAM_r[output_RAM_addr3] <= {RAM7_r[31], RAM7_r[22:8]};
-			output_RAM_i[output_RAM_addr3] <= {RAM7_i[31], RAM7_i[22:8]};
-			output_RAM_addr3 <= output_RAM_addr3 + 1;	//192,193,194...
+			output_RAM_r[output_RAM_addr+192] <= {RAM7_r[31], RAM7_r[22:8]};
+			output_RAM_i[output_RAM_addr+192] <= {RAM7_i[31], RAM7_i[22:8]};
+			output_RAM_addr <= output_RAM_addr + 1;	
 			output_RAM_flag <= 0;
-			if(output_RAM_addr3 == 255)		//can be loaded into the output_buffer in parallel
+			if(output_RAM_addr == 63)		//can be loaded into the output_buffer in parallel
 			begin
 				output_buffer_en <= 1;	
 			end
@@ -1130,3 +1124,55 @@ endmodule
 assign Data_out_r = data_o_r;
 assign Data_out_i = data_o_i;
 			
+    module BF(ar, ai, br, bi, cr, ci, dr, di);
+    input  [31:0] ar;
+    input  [31:0] ai;
+    input  [31:0] br;
+    input  [31:0] bi;
+    output [31:0] cr;
+    output [31:0] ci;
+    output [31:0] dr;
+    output [31:0] di;
+
+    assign [31:0] cr = ar + br
+    assign [31:0] ci = ai + bi
+    assign [31:0] dr = ar - br
+    assign [31:0] di = ai - bi
+    endmodule
+
+    module TJ(tr, ti, sel, sr, si);		//only needs to implement * (-j)
+    // input output
+    input [31:0] tr;
+    input [31:0] ti;
+    input sel;
+
+    output [31:0] sr;
+    output [31:0] si;
+
+    // calculation
+    wire [63:0] aug_minus_tr = signed(32'hFFFF_FFFF) * signed(tr)
+    wire [31:0] minus_tr = {aug_minus_tr[63], aug_minus_tr[46:16]}
+
+    assign [31:0] sr = sel ?       ti : tr;
+    assign [31:0] si = sel ? minus_tr : ti;
+	    
+    endmodule
+
+    module TF(tr, ti, wr, wi, sr, si);
+    // input output
+    input [31:0] tr;
+    input [31:0] ti;
+    input [31:0] wr;
+    input [31:0] wi;
+
+    output [31:0] sr;
+    output [31:0] si;
+
+    // calculation
+    wire [63:0] aug_sr = $signed(tr) * $signed(wr) - $signed(ti) * $signed(wi);
+    wire [63:0] aug_si = $signed(tr) * $signed(wi) + $signed(ti) * $signed(wr);
+
+    assign [31:0] sr = {aug_sr[63], aug_sr[46:16]};
+    assign [31:0] si = {aug_si[63], aug_si[46:16]};
+    endmodule
+
