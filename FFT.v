@@ -51,7 +51,7 @@ assign sr = {aug_sr[63], aug_sr[46:16]};
 assign si = {aug_si[63], aug_si[46:16]};
 endmodule
 
-module fft_256(Data_in_r, Data_in_i, RST, CLK, Data_out_r, Data_out_i);
+module fft_256(Data_in_r, Data_in_i, RST, CLK, Data_out_r, Data_out_i, out_ready);
 
 // ========== change
 input [15:0] Data_in_r;
@@ -61,6 +61,7 @@ input CLK;
 
 output [15:0] Data_out_r;
 output [15:0] Data_out_i;  // ========== d -> D
+output out_ready;
 
 integer m;
 //stage 0
@@ -74,15 +75,15 @@ reg [31:0] Ar0;
 reg [31:0] Ai0;
 reg [31:0] Br0;
 reg [31:0] Bi0; 
-reg [31:0] Cr0;
-reg [31:0] Ci0;
-reg [31:0] Dr0; 
-reg [31:0] Di0;
+wire [31:0] Cr0;
+wire [31:0] Ci0;
+wire [31:0] Dr0; 
+wire [31:0] Di0;
 reg [31:0] Tr0;
 reg [31:0] Ti0;
 reg Sel0;
-reg [31:0] Sr0; 
-reg [31:0] Si0;
+wire [31:0] Sr0; 
+wire [31:0] Si0;
 reg bf_0_en;
 reg tf_0_en;
 reg input_0_flag;
@@ -97,16 +98,16 @@ reg [31:0] Ar1;
 reg [31:0] Ai1;
 reg [31:0] Br1;
 reg [31:0] Bi1; 
-reg [31:0] Cr1;
-reg [31:0] Ci1;
-reg [31:0] Dr1; 
-reg [31:0] Di1;
+wire [31:0] Cr1;
+wire [31:0] Ci1;
+wire [31:0] Dr1; 
+wire [31:0] Di1;
 reg [31:0] Tr1;
 reg [31:0] Ti1;
 reg [31:0] Wr1;
 reg [31:0] Wi1;
-reg [31:0] Sr1; 
-reg [31:0] Si1;	
+wire [31:0] Sr1; 
+wire [31:0] Si1;	
 reg bf_1_en;
 reg tf_1_en;
 reg tf_1_flag;
@@ -122,15 +123,15 @@ reg [31:0] Ar2;
 reg [31:0] Ai2;
 reg [31:0] Br2;
 reg [31:0] Bi2; 
-reg [31:0] Cr2;
-reg [31:0] Ci2;
-reg [31:0] Dr2; 
-reg [31:0] Di2;
+wire [31:0] Cr2;
+wire [31:0] Ci2;
+wire [31:0] Dr2; 
+wire [31:0] Di2;
 reg [31:0] Tr2;
 reg [31:0] Ti2;
 reg Sel2;
-reg [31:0] Sr2; 
-reg [31:0] Si2;
+wire [31:0] Sr2; 
+wire [31:0] Si2;
 reg bf_2_en;
 reg tf_2_en;
 reg input_2_flag;
@@ -145,16 +146,16 @@ reg [31:0] Ar3;
 reg [31:0] Ai3;
 reg [31:0] Br3;
 reg [31:0] Bi3; 
-reg [31:0] Cr3;
-reg [31:0] Ci3;
-reg [31:0] Dr3; 
-reg [31:0] Di3;
+wire [31:0] Cr3;
+wire [31:0] Ci3;
+wire [31:0] Dr3; 
+wire [31:0] Di3;
 reg [31:0] Tr3;
 reg [31:0] Ti3;
 reg [31:0] Wr3;
 reg [31:0] Wi3;
-reg [31:0] Sr3; 
-reg [31:0] Si3;	
+wire [31:0] Sr3; 
+wire [31:0] Si3;	
 reg bf_3_en;
 reg tf_3_en;
 reg tf_3_flag;
@@ -170,15 +171,15 @@ reg [31:0] Ar4;
 reg [31:0] Ai4;
 reg [31:0] Br4;
 reg [31:0] Bi4; 
-reg [31:0] Cr4;
-reg [31:0] Ci4;
-reg [31:0] Dr4; 
-reg [31:0] Di4;
+wire [31:0] Cr4;
+wire [31:0] Ci4;
+wire [31:0] Dr4; 
+wire [31:0] Di4;
 reg [31:0] Tr4;
 reg [31:0] Ti4;
 reg Sel4;
-reg [31:0] Sr4; 
-reg [31:0] Si4;
+wire [31:0] Sr4; 
+wire [31:0] Si4;
 reg bf_4_en;
 reg tf_4_en;
 reg input_4_flag;
@@ -193,16 +194,16 @@ reg [31:0] Ar5;
 reg [31:0] Ai5;
 reg [31:0] Br5;
 reg [31:0] Bi5; 
-reg [31:0] Cr5;
-reg [31:0] Ci5;
-reg [31:0] Dr5; 
-reg [31:0] Di5;
+wire [31:0] Cr5;
+wire [31:0] Ci5;
+wire [31:0] Dr5; 
+wire [31:0] Di5;
 reg [31:0] Tr5;
 reg [31:0] Ti5;
 reg [31:0] Wr5;
 reg [31:0] Wi5;
-reg [31:0] Sr5; 
-reg [31:0] Si5;	
+wire [31:0] Sr5; 
+wire [31:0] Si5;	
 reg bf_5_en;
 reg tf_5_en;
 reg tf_5_flag;
@@ -218,15 +219,15 @@ reg [31:0] Ar6;
 reg [31:0] Ai6;
 reg [31:0] Br6;
 reg [31:0] Bi6; 
-reg [31:0] Cr6;
-reg [31:0] Ci6;
-reg [31:0] Dr6; 
-reg [31:0] Di6;
+wire [31:0] Cr6;
+wire [31:0] Ci6;
+wire [31:0] Dr6; 
+wire [31:0] Di6;
 reg [31:0] Tr6;
 reg [31:0] Ti6;
 reg Sel6;
-reg [31:0] Sr6; 
-reg [31:0] Si6;
+wire [31:0] Sr6; 
+wire [31:0] Si6;
 reg bf_6_en;
 reg tf_6_en;
 reg input_6_flag;
@@ -238,10 +239,10 @@ reg [31:0] Ar7;
 reg [31:0] Ai7;
 reg [31:0] Br7;
 reg [31:0] Bi7; 
-reg [31:0] Cr7;
-reg [31:0] Ci7;
-reg [31:0] Dr7; 
-reg [31:0] Di7;
+wire [31:0] Cr7;
+wire [31:0] Ci7;
+wire [31:0] Dr7; 
+wire [31:0] Di7;
 reg bf_7_en;
 reg tf_7_en;
 reg input_7_flag;
@@ -256,6 +257,7 @@ reg [15:0] output_buffer_r [255:0];
 reg [15:0] output_buffer_i [255:0];	//256*16 bit
 reg output_en;
 reg [7:0] output_ptr;
+reg output_ready;
 reg [15:0] data_o_r;
 reg [15:0] data_o_i;
 // ========== change
@@ -645,6 +647,7 @@ assign tf_ROM_i[189] = 32'h0000FF4E;
 // =========
 assign Data_out_r = data_o_r;
 assign Data_out_i = data_o_i;
+assign out_ready = output_ready;
 // ***** reset
 always @(posedge CLK or posedge RST)
 begin
@@ -1542,6 +1545,10 @@ begin
 			output_buffer_i[m] <= output_RAM_i[m];		
 		end
 	end
+	else
+	begin
+		output_en <= 0;
+	end
 end
 			
 always @(posedge CLK or posedge RST)		//output stream
@@ -1552,12 +1559,17 @@ begin
 	end
 	else if(output_en)   
 	begin
+		if(output_ptr == 0)
+		begin
+			output_ready <= 1;
+		end
 		data_o_r <= output_buffer_r[output_ptr];
 		data_o_i <= output_buffer_r[output_ptr];
 		output_ptr <= output_ptr+1;
 		if(output_ptr == 255)
 		begin
 			output_ptr <= 0;
+			output_ready <= 0;
 		end
 	end
 end
