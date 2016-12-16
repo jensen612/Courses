@@ -47,7 +47,7 @@ output [31:0] si;
 wire [63:0] aug_sr = $signed(tr) * $signed(wr) - $signed(ti) * $signed(wi);
 wire [63:0] aug_si = $signed(tr) * $signed(wi) + $signed(ti) * $signed(wr);
 
-assign sr = {aug_sr[63], aug_sr[46:16]};
+	assign sr = {aug_sr[63], aug_sr[46:16]};
 assign si = {aug_si[63], aug_si[46:16]};
 endmodule
 
