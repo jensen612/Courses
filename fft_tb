@@ -1,6 +1,6 @@
 `timescale 1ns/10ps
 `define CYCLE     10                 // Modify your clock period here
-`define End_CYCLE  120000          // Modify cycle times once your design need more cycle times!
+`define End_CYCLE  12000          // Modify cycle times once your design need more cycle times!
 
 
 
@@ -20,12 +20,35 @@ initial $readmemh("./FFT_IN.dat", data_mem);
 //$dumpvars;
 
 integer i;
+integer f;
 wire [15:0] data_imag = 16'h0000;
 wire [15:0] data_out_r;
 wire [15:0] data_out_i;
 wire out_ready;
+wire out_ptr;
+wire out_en;
+wire s1_en;
+wire s2_en;
+wire s3_en;
+wire s4_en;
+wire s5_en;
+wire s6_en;
+wire s7_en;
+wire or_en;
+wire oi_en;
+wire [6:0] or_addr;
 
-fft_256 FFT(.Data_in_r(data), .Data_in_i(data_imag), .RST(reset), .CLK(clk), .input_en(en), .Data_out_r(data_out_r), .Data_out_i(data_out_i), .out_ready(out_ready));
+fft_256 FFT(.Data_in_r(data), .Data_in_i(data_imag), .RST(reset), .CLK(clk), .input_en(en), .Data_out_r(data_out_r), .Data_out_i(data_out_i), .out_ready(out_ready), .out_ptr(out_ptr), .out_en(out_en),
+.s1_en(s1_en),
+.s2_en(s2_en),
+.s3_en(s3_en),
+.s4_en(s4_en),
+.s5_en(s5_en),
+.s6_en(s6_en),
+.s7_en(s7_en),
+.or_en(or_en),
+.ob_en(ob_en),
+.or_addr(or_addr));
 
 
 initial begin
@@ -58,14 +81,27 @@ always@(posedge clk) begin
 	end
 end
 
+// Output file
+initial
+begin
+    f = $fopen("output.txt","w");
+end
+
+always@(negedge clk) begin
+    if(out_ready) begin 
+        $fwrite(f,"%h\n", data_out_r);
+        $fwrite(f,"%h\n", data_out_i);
+    end
+end
+
 // Terminate the simulation, FAIL
 initial  begin
  #(`CYCLE * `End_CYCLE);
  $display("-----------------------------------------------------");
- $display(“End Cycle Reach!!“);
- $display("-------------------------FAIL------------------------");
+ $display("End Cycle Reach!!");
  $display("-----------------------------------------------------");
  $finish;
+ $fclosew(f);
 end
 
 
