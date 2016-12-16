@@ -25,8 +25,10 @@ output signed [31:0] sr;
 output signed [31:0] si;
 
     // calculation
-wire signed [63:0] aug_minus_tr = $signed(32'hFFFF_FFFF) * $signed(tr);
-wire signed [31:0] minus_tr = {aug_minus_tr[63], aug_minus_tr[46:16]};
+
+wire signed [31:0] minus_tr = (~tr[31:0] + $signed(32'h00000001));
+//wire signed [63:0] aug_minus_tr = $signed(32'hFFFF_FFFF) * $signed(tr);
+//wire signed [31:0] minus_tr = {aug_minus_tr[63], aug_minus_tr[46:16]};
 
 assign sr = sel ?       ti : tr;
 assign si = sel ? minus_tr : ti;
@@ -44,8 +46,8 @@ output signed [31:0] sr;
 output signed [31:0] si;
 
     // calculation
-wire signed [63:0] aug_sr = $signed(tr) * $signed(wr) - $signed(ti) * $signed(wi);
-wire signed [63:0] aug_si = $signed(tr) * $signed(wi) + $signed(ti) * $signed(wr);
+wire signed [64:0] aug_sr = $signed(tr) * $signed(wr) - $signed(ti) * $signed(wi);
+wire signed [64:0] aug_si = $signed(tr) * $signed(wi) + $signed(ti) * $signed(wr);
 
 assign sr = {aug_sr[63], aug_sr[46:16]};
 assign si = {aug_si[63], aug_si[46:16]};
@@ -65,7 +67,13 @@ module fft_256(Data_in_r, Data_in_i, RST, CLK, input_en, Data_out_r, Data_out_i,
 , cr_0
 , ci_0
 , dr_0
-, di_0);
+, di_0
+, tf1_flag
+, tf3_flag
+, tf5_flag
+, wr_1
+, si_0
+);
 
 // ========== change
 input signed [15:0] Data_in_r;
@@ -88,11 +96,16 @@ output s6_en;
 output s7_en;
 output or_en;
 output ob_en;
+output tf1_flag;
+output tf3_flag;
+output tf5_flag;
 output [6:0] or_addr;
 output signed [31:0] cr_0;
 output signed [31:0] ci_0;
 output signed [31:0] dr_0;
 output signed [31:0] di_0;
+output signed [31:0] wr_1;
+output signed [31:0] si_0;
 
 integer m;
 //stage 0
@@ -123,7 +136,7 @@ reg signed [31:0] RAM1_r [63:0];
 reg signed [31:0] RAM1_i [63:0];   // 64*32 bit
 reg [5:0] RAM1_addr;
 reg [5:0] bf_1_addr;
-reg [5:0] tf_1_addr;
+reg [7:0] tf_1_addr;
 reg signed [31:0] Ar1;
 reg signed [31:0] Ai1;
 reg signed [31:0] Br1;
@@ -171,7 +184,7 @@ reg signed [31:0] RAM3_r [15:0];
 reg signed [31:0] RAM3_i [15:0];   // 16*32 bit
 reg [3:0] RAM3_addr;
 reg [3:0] bf_3_addr;
-reg [3:0] tf_3_addr;
+reg [7:0] tf_3_addr;
 reg signed [31:0] Ar3;
 reg signed [31:0] Ai3;
 reg signed [31:0] Br3;
@@ -219,7 +232,7 @@ reg signed [31:0] RAM5_r [3:0];
 reg signed [31:0] RAM5_i [3:0];    // 4*32 bit
 reg [1:0] RAM5_addr;
 reg [1:0] bf_5_addr;
-reg [1:0] tf_5_addr;
+reg [7:0] tf_5_addr;
 reg signed [31:0] Ar5;
 reg signed [31:0] Ai5;
 reg signed [31:0] Br5;
@@ -694,6 +707,12 @@ assign cr_0 = Cr0;
 assign ci_0 = Ci0;
 assign dr_0 = Dr0;
 assign di_0 = Di0;
+assign tf1_flag = tf_1_flag;
+assign tf3_flag = tf_3_flag;
+assign tf5_flag = tf_5_flag;
+assign wr_1 = Wr1;
+assign si_0 = Si0;
+
 // ***** stage 0
 		BF BF0(.ar(Ar0),.ai(Ai0),.br(Br0),.bi(Bi0),.cr(Cr0),.ci(Ci0),.dr(Dr0),.di(Di0)); //Two inputs. Two outputs. C:Addition; D:Substraction
 		TJ TF0(.tr(Tr0),.ti(Ti0),.sel(Sel0),.sr(Sr0),.si(Si0));		//only needs to implement * (-j)
@@ -862,7 +881,7 @@ begin
 	end
 end
 
-always @(posedge CLK or posedge RST)		//STAGE 1 Twiddle Factor
+always @(posedge CLK or posedge RST)		//STAGE 1 Twiddle Factor: 
 begin
 	if(RST)
 	begin
@@ -880,8 +899,8 @@ begin
 			tf_1_addr <= tf_1_addr + 1;
 			if(tf_1_flag == 0)	//CC, * W(0,0,0...)
 			begin
-				Wr1 <= 1;
-				Wi1 <= 0;
+				Wr1 <= $signed(32'h00010000);
+				Wi1 <= $signed(32'h00000000);
 			end
 			else				//DC,* W(0,1,2,3,...,63)			
 			begin
@@ -1103,8 +1122,8 @@ begin
 			tf_3_addr <= tf_3_addr + 1;
 			if(tf_3_flag == 0)	//CC, * W(0,0,0...)
 			begin
-				Wr3 <= 1;
-				Wi3 <= 0;
+				Wr3 <= $signed(32'h00010000);
+				Wi3 <= $signed(32'h00000000);
 			end
 			else				//DC,* W(0,1,2,3,...,15)			
 			begin
@@ -1328,8 +1347,8 @@ begin
 			tf_5_addr <= tf_5_addr + 1;
 			if(tf_5_flag == 0)	//CC, * W(0,0,0...)
 			begin
-				Wr5 <= 1;
-				Wi5 <= 0;
+				Wr5 <= $signed(32'h00010000);
+				Wi5 <= $signed(32'h00000000);
 			end
 			else				//DC,* W(0,1,2,3,...,15)			
 			begin
@@ -1495,7 +1514,7 @@ begin
 		end
 		else	//input_7_flag == 0, fetch from butterfly		
 		begin
-			F7_r <= Dr7;		//From this stage's BF		
+			RAM7_r <= Dr7;		//From this stage's BF		
 			RAM7_i <= Di7;
 			bf_7_en <= 0;		//Disable stage 7's BF, repeat
 			input_7_flag <= 1;
@@ -1527,36 +1546,38 @@ begin
 		output_RAM_addr <= 0;
 		output_RAM_flag <= 0;
 		output_buffer_en <= 0;
+		output_ready <= 0;
 	end
 	else if(output_RAM_en)   //0,128,64,192,1,129,65,129,3...
 	begin
+		output_ready <= 1;
 		case(output_RAM_flag)			//From Butterfly 7, //0,1,2,3...
 		0:
 		begin
-			output_RAM_r[output_RAM_addr] <= {Cr7[31], Cr7[22:8]};	
-			output_RAM_i[output_RAM_addr] <= {Ci7[31], Ci7[22:8]};
+			data_o_r <= {Cr7[31], Cr7[22:8]};	
+			data_o_i <= {Ci7[31], Ci7[22:8]};
 			output_RAM_flag <= output_RAM_flag+1;	
 			if(output_RAM_addr == 0)		//output_buffer only used for one cycle
 			begin
 				output_buffer_en <= 0;	
 			end
 		end
-		1:			//From RAM7 //128,129,130...f
+		1:			//From RAM7 //128,129,130...
 		begin
-			output_RAM_r[output_RAM_addr+128] <= {RAM7_r[31], RAM7_r[22:8]};
-			output_RAM_i[output_RAM_addr+128] <= {RAM7_i[31], RAM7_i[22:8]};
+			data_o_r <= {RAM7_r[31], RAM7_r[22:8]};
+			data_o_i <= {RAM7_i[31], RAM7_i[22:8]};
 			output_RAM_flag <= output_RAM_flag+1;		
 		end	
 		2:		//From Butterfly 7 //64,65,66...
 		begin
-			output_RAM_r[output_RAM_addr+64] <= {Cr7[31], Cr7[22:8]};
-			output_RAM_i[output_RAM_addr+64] <= {Ci7[31], Ci7[22:8]};	
+			data_o_r <= {Cr7[31], Cr7[22:8]};
+			data_o_i <= {Ci7[31], Ci7[22:8]};	
 			output_RAM_flag <= output_RAM_flag+1;
 		end
 		3:			//From RAM7 //192,193,194...
 		begin
-			output_RAM_r[output_RAM_addr+192] <= {RAM7_r[31], RAM7_r[22:8]};
-			output_RAM_i[output_RAM_addr+192] <= {RAM7_i[31], RAM7_i[22:8]};
+			data_o_r <= {RAM7_r[31], RAM7_r[22:8]};
+			data_o_i <= {RAM7_i[31], RAM7_i[22:8]};
 			output_RAM_addr <= output_RAM_addr + 1;	
 			output_RAM_flag <= 0;
 			if(output_RAM_addr == 63)		//can be loaded into the output_buffer in parallel
@@ -1589,7 +1610,8 @@ begin
 		output_en <= 0;
 	end
 end
-			
+
+/*			
 always @(posedge CLK or posedge RST)		//output stream
 begin
 	if(RST)
@@ -1612,4 +1634,6 @@ begin
 		end
 	end
 end
+*/
 endmodule
+
