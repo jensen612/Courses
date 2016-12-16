@@ -1,0 +1,61 @@
+`timescale 1ns/10ps
+`define CYCLE     10                 // Modify your clock period here
+`define End_CYCLE  120000          // Modify cycle times once your design need more cycle times!
+
+
+
+module testbench;
+
+reg   clk ;
+reg   reset ;
+reg [15:0] data; // 4 integer + 4 fraction
+
+reg en;
+
+reg [15:0] data_mem [0:9983];
+
+initial $readmemh("./FFT_IN.dat", data_mem);
+
+//$dumpfile("FFT.cvd");
+//$dumpvars;
+
+integer i;
+wire [15:0] data_imag = 16'h0000;
+wire [15:0] data_out_r;
+wire [15:0] data_out_i;
+wire out_ready;
+
+fft_256 FFT(.Data_in_r(data), .Data_in_i(data_imag), .RST(reset), .CLK(clk), .input_en(en), .Data_out_r(data_out_r), .Data_out_i(data_out_i), .out_ready(out_ready));
+
+
+initial begin
+#0;
+   clk         = 1'b0;
+   reset       = 1'b0; 
+   i = 0;   
+   
+end
+
+always begin #(`CYCLE/2) clk = ~clk; end
+
+initial begin
+	en = 0;
+   #(`CYCLE*1)   reset = 1'b1; 
+   #(`CYCLE*0.5) en=1;
+   #(`CYCLE*0.5) reset = 1'b0; // negedge
+
+end
+
+// data input & ready
+always@(posedge clk) begin
+	if (en || reset) begin
+		if (i >= 9984 )
+			data <= 0;
+		else begin
+			data <= data_mem[i];
+			i <= i + 1;
+		end
+	end
+end
+
+endmodule
