@@ -9,31 +9,207 @@ input CLK;
 output [15:0] Data_out_r;
 output [15:0] Data_out_i;  // ========== d -> D
 
+//stage 0
+reg input_en;
 reg [31:0] RAM0_r [127:0];
-reg [31:0] RAM0_i [127:0];  // 128*16 bit
+reg [31:0] RAM0_i [127:0];  // 128*32 bit
+reg [6:0] RAM0_addr;
+reg [6:0] bf_0_addr;
+reg [6:0] tf_0_addr;
+reg [31:0] Ar0;
+reg [31:0] Ai0;
+reg [31:0] Br0;
+reg [31:0] Bi0; 
+reg [31:0] Cr0;
+reg [31:0] Ci0;
+reg [31:0] Dr0; 
+reg [31:0] Di0;
+reg [31:0] Tr0;
+reg [31:0] Ti0;
+reg [31:0] Sel0;
+reg [31:0] Sr0; 
+reg [31:0] Si0;
+reg bf_0_en;
+reg tf_0_en;
+reg input_0_flag;
+//stage 1
+reg stage1_input_en;
 reg [31:0] RAM1_r [63:0];
-reg [31:0] RAM1_i [63:0];   // 64*16 bit
+reg [31:0] RAM1_i [63:0];   // 64*32 bit
+reg [5:0] RAM1_addr;
+reg [5:0] bf_1_addr;
+reg [5:0] tf_1_addr;
+reg [31:0] Ar1;
+reg [31:0] Ai1;
+reg [31:0] Br1;
+reg [31:0] Bi1; 
+reg [31:0] Cr1;
+reg [31:0] Ci1;
+reg [31:0] Dr1; 
+reg [31:0] Di1;
+reg [31:0] Tr1;
+reg [31:0] Ti1;
+reg [31:0] Wr1;
+reg [31:0] Wi1;
+reg [31:0] Sr1; 
+reg [31:0] Si1;	
+reg bf_1_en;
+reg tf_1_en;
+reg input_1_flag;	
+//stage 2	
+reg stage2_input_en;
 reg [31:0] RAM2_r [31:0];
-reg [31:0] RAM2_i [31:0];   // 32*16 bit
+reg [31:0] RAM2_i [31:0];   // 32*32 bit
+reg [4:0] RAM2_addr;
+reg [4:0] bf_2_addr;
+reg [4:0] tf_2_addr;
+reg [31:0] Ar2;
+reg [31:0] Ai2;
+reg [31:0] Br2;
+reg [31:0] Bi2; 
+reg [31:0] Cr2;
+reg [31:0] Ci2;
+reg [31:0] Dr2; 
+reg [31:0] Di2;
+reg [31:0] Tr2;
+reg [31:0] Ti2;
+reg [31:0] Sel2;
+reg [31:0] Sr2; 
+reg [31:0] Si2;
+reg bf_2_en;
+reg tf_2_en;
+reg input_2_flag;
+//stage 3
+reg stage3_input_en;
 reg [31:0] RAM3_r [15:0];   
-reg [31:0] RAM3_i [15:0];   // 16*16 bit
+reg [31:0] RAM3_i [15:0];   // 16*32 bit
+reg [3:0] RAM1_addr;
+reg [3:0] bf_1_addr;
+reg [3:0] tf_1_addr;
+reg [31:0] Ar1;
+reg [31:0] Ai1;
+reg [31:0] Br1;
+reg [31:0] Bi1; 
+reg [31:0] Cr1;
+reg [31:0] Ci1;
+reg [31:0] Dr1; 
+reg [31:0] Di1;
+reg [31:0] Tr1;
+reg [31:0] Ti1;
+reg [31:0] Wr1;
+reg [31:0] Wi1;
+reg [31:0] Sr1; 
+reg [31:0] Si1;	
+reg bf_1_en;
+reg tf_1_en;
+reg input_1_flag;	
+//stage 4
+reg stage4_input_en;
 reg [31:0] RAM4_r [7:0];
-reg [31:0] RAM4_i [7:0];    // 8*16 bit
+reg [31:0] RAM4_i [7:0];    // 8*32 bit
+reg [2:0] RAM4_addr;
+reg [2:0] bf_4_addr;
+reg [2:0] tf_4_addr;
+reg [31:0] Ar4;
+reg [31:0] Ai4;
+reg [31:0] Br4;
+reg [31:0] Bi4; 
+reg [31:0] Cr4;
+reg [31:0] Ci4;
+reg [31:0] Dr4; 
+reg [31:0] Di4;
+reg [31:0] Tr4;
+reg [31:0] Ti4;
+reg [31:0] Sel4;
+reg [31:0] Sr4; 
+reg [31:0] Si4;
+reg bf_4_en;
+reg tf_4_en;
+reg input_4_flag;
+//stage 5
+reg stage5_input_en;
 reg [31:0] RAM5_r [3:0];
-reg [31:0] RAM5_i [3:0];    // 4*16 bit
+reg [31:0] RAM5_i [3:0];    // 4*32 bit
+reg [1:0] RAM5_addr;
+reg [1:0] bf_5_addr;
+reg [1:0] tf_5_addr;
+reg [31:0] Ar5;
+reg [31:0] Ai5;
+reg [31:0] Br5;
+reg [31:0] Bi5; 
+reg [31:0] Cr5;
+reg [31:0] Ci5;
+reg [31:0] Dr5; 
+reg [31:0] Di5;
+reg [31:0] Tr5;
+reg [31:0] Ti5;
+reg [31:0] Wr5;
+reg [31:0] Wi5;
+reg [31:0] Sr5; 
+reg [31:0] Si5;	
+reg bf_5_en;
+reg tf_5_en;
+reg input_5_flag;	
+//stage 6
+reg stage6_input_en;
 reg [31:0] RAM6_r [1:0];   
-reg [31:0] RAM6_i [1:0];    // 2*16 bit
+reg [31:0] RAM6_i [1:0];    // 2*32 bit
+reg RAM6_addr;
+reg bf_6_addr;
+reg tf_6_addr;
+reg [31:0] Ar6;
+reg [31:0] Ai6;
+reg [31:0] Br6;
+reg [31:0] Bi6; 
+reg [31:0] Cr6;
+reg [31:0] Ci6;
+reg [31:0] Dr6; 
+reg [31:0] Di6;
+reg [31:0] Tr6;
+reg [31:0] Ti6;
+reg [31:0] Sel6;
+reg [31:0] Sr6; 
+reg [31:0] Si6;
+reg bf_6_en;
+reg tf_6_en;
+reg input_6_flag;
+//stage 7
+reg stage7_input_en;
 reg [31:0] RAM7_r;
-reg [31:0] RAM7_i;          // 1*16 bit
+reg [31:0] RAM7_i;          // 1*32 bit
+reg [31:0] Ar7;
+reg [31:0] Ai7;
+reg [31:0] Br7;
+reg [31:0] Bi7; 
+reg [31:0] Cr7;
+reg [31:0] Ci7;
+reg [31:0] Dr7; 
+reg [31:0] Di7;
+reg bf_7_en;
+reg tf_7_en;
+reg input_7_flag;
+//output
+reg output_RAM_en;
+reg [7:0] output_RAM_addr;
+reg [15:0] output_RAM_r [255:0];
+reg [15:0] output_RAM_i [255:0];	//256*16 bit
+reg [1:0] output_RAM_flag;
+reg output_buffer_en;
+reg [15:0] output_bufer_r [255:0];
+reg [15:0] output_buffer_i [255:0];	//256*16 bit
+reg output_en;
+reg [7:0] output_ptr;
+reg [15:0] data_o_r;
+reg [15:0] data_i_r;
 // ========== change
 
 
 // ***** reset
-always @(posedge CLK)
+always @(posedge CLK or posedge RST)
 begin
 	if(RST)
 	begin
-		
+		input_en <= 1;			//reset for new input
 	end
 	else
 end
