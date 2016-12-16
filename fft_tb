@@ -58,4 +58,15 @@ always@(posedge clk) begin
 	end
 end
 
+// Terminate the simulation, FAIL
+initial  begin
+ #(`CYCLE * `End_CYCLE);
+ $display("-----------------------------------------------------");
+ $display(“End Cycle Reach!!“);
+ $display("-------------------------FAIL------------------------");
+ $display("-----------------------------------------------------");
+ $finish;
+end
+
+
 endmodule
