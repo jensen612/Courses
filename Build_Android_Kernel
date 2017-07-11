@@ -1,0 +1,194 @@
+###
+
+# Download Android NDK to be able to compile runtime cmd-line tools on ARM
+
+# - https://developer.android.com/ndk/downloads/index.html
+
+wget https://dl.google.com/android/repository/android-ndk-r15b-linux-x86_64.zip
+
+
+
+###
+
+# Download up-to-date adb/fastboot platform tools to interface with Android (adb/fastboot)
+
+# - https://developer.android.com/studio/releases/platform-tools.html
+
+wget https://dl.google.com/android/repository/platform-tools-latest-linux.zip
+
+
+
+###
+
+# Download prebuilt gcc toolchain for kernel compilation
+
+# Pick the correct architecture: ARMv7/arm, ARMv8/aarch64
+
+# - https://android.googlesource.com/platform/prebuilts
+
+git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9
+
+git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9
+
+
+
+###
+
+# Set environment settings for cross-compilation
+
+# - ARMv7/arm
+
+export PATH=/home/jensen/arm-linux-androideabi-4.9/bin:$PATH
+
+export ARCH=arm
+
+export CROSS_COMPILE=arm-linux-androideabi-
+
+# - ARMv8/aarch64 
+
+export PATH=/home/jensen/aarch64-linux-android-4.9/bin:$PATH
+
+export ARCH=arm64
+
+export CROSS_COMPILE=aarch64-linux-android-
+
+
+
+###
+
+# Download kernel (Nexus 6)
+
+# - https://android.googlesource.com/kernel/msm/
+
+git clone https://android.googlesource.com/kernel/msm.git
+
+git checkout android-msm-shamu-3.10-marshmallow-mr2
+
+
+
+###
+
+# Compile a custom kernel image that can load kernel modules
+
+make shamu_defconfig
+
+make menuconfig
+
+# - enable loadable kernel modules
+
+make -j4
+
+# - image is found at msm/arch/arm/boot/zImage-dtb
+
+
+
+###
+
+# Extract RAM disk and build boot image
+
+# - Kernel is compiled to a zImage which needs to be combined with a ramdisk to create a boot image.
+
+# - We do that by extracting the raw boot partition dump from the device, and then extract the ramdisk.
+
+sudo apt install abootimg
+
+# - log into device via adb and view partition layout
+
+adb shell
+
+cat /proc/partitions
+
+# - look for the boot partition and extract it (boot -> /dev/block/mmcblk0p14)
+
+ls /dev/block/platform/msm_sdcc.1/by-name/
+
+dd if=/dev/block/platform/msm_sdcc.1/by-name/boot of=cur-boot.img
+
+# - extract the ramdisk from raw boot image dump
+
+# - we need 2 files: bootimg.cfg, initrd.img
+
+abootimg -x cur-boot.img
+
+# - build the new boot image by combining our zImage kernel image with the above 2 files
+
+abootimg --create myboot.img -f bootimg.cfg -k zImage -r initrd.img
+
+
+
+###
+
+# Boot new image (without flashing it, it is not permanent)
+
+adb reboot bootloader
+
+fastboot boot myboot.img
+
+
+
+
+
+#======================================================================================================
+
+# Custom kernel module
+
+make CFLAGS_MODULE=-fno-pic ARCH=arm CONFIG_HELLOWORLD=m M=drivers/helloworld
+
+adb -s $DEVICE_ID push drivers/helloworld/helloworld.ko /data/local/tmp
+
+adb -s $DEVICE_ID shell su -c "cat /proc/kmsg" &
+
+adb -s $DEVICE_ID shell su -c "insmod /data/local/tmp/helloworld.ko"
+
+
+
+
+
+#======================================================================================================
+
+# Debug commands for Nexus 6 (shamu)
+
+
+
+###
+
+# Leave only CPU1 and CPU2 online at maximum frequency
+
+cd /data/local/tmp
+
+stop thermal-engine
+
+stop mpdecision
+
+echo 1 > /sys/devices/system/cpu/cpu1/online
+
+echo 1 > /sys/devices/system/cpu/cpu2/online
+
+echo 0 > /sys/devices/system/cpu/cpu3/online
+
+echo userspace > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+
+echo userspace > /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor
+
+echo userspace > /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor
+
+echo 2649600 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_setspeed
+
+echo 2649600 > /sys/devices/system/cpu/cpu1/cpufreq/scaling_setspeed
+
+echo 2649600 > /sys/devices/system/cpu/cpu2/cpufreq/scaling_setspeed
+
+
+
+###
+
+# Diagnostic debug logs on frequency, voltage and temperature
+
+cat /d/clk/krait0_clk/measure
+
+cat /d/regulator/krait0/voltage
+
+cat /d/clk/l2_clk/measure
+
+cat /sys/devices/virtual/thermal/thermal_zone0/temp
+
