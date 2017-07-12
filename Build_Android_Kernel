@@ -134,11 +134,11 @@ fastboot boot myboot.img
 
 make CFLAGS_MODULE=-fno-pic ARCH=arm CONFIG_HELLOWORLD=m M=drivers/helloworld
 
-adb -s $DEVICE_ID push drivers/helloworld/helloworld.ko /data/local/tmp
+adb push drivers/helloworld/helloworld.ko /data/local/tmp
 
-adb -s $DEVICE_ID shell su -c "cat /proc/kmsg" &
+adb shell su -c "cat /proc/kmsg" &
 
-adb -s $DEVICE_ID shell su -c "insmod /data/local/tmp/helloworld.ko"
+adb shell su -c "insmod /data/local/tmp/helloworld.ko"
 
 
 
