@@ -150,7 +150,7 @@ adb shell su -c "cat /proc/kmsg" &
 
 adb shell su -c "insmod /data/local/tmp/helloworld.ko"
 
-adb shell dmseg > log
+adb shell dmesg > log
 
 
 
