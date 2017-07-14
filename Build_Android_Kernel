@@ -24,6 +24,7 @@ wget https://dl.google.com/android/repository/platform-tools-latest-linux.zip
 
 # Pick the correct architecture: ARMv7/arm, ARMv8/aarch64
 
+
 # - https://android.googlesource.com/platform/prebuilts
 
 git clone https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9
@@ -52,6 +53,14 @@ export ARCH=arm64
 
 export CROSS_COMPILE=aarch64-linux-android-
 
+
+export PATH=/home/jensen/arm-eabi-4.6/bin:$PATH
+
+export ARCH=arm
+
+export SUBARCH=arm
+
+export CROSS_COMPILE=arm-eabi-
 
 
 ###
