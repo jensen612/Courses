@@ -155,6 +155,7 @@ adb shell dmesg > log
 
 #======================================================================================================
 
+
 # Debug commands for Nexus 6 (shamu)
 
 
@@ -196,6 +197,8 @@ echo 2649600 > /sys/devices/system/cpu/cpu2/cpufreq/scaling_setspeed
 ###
 
 # Diagnostic debug logs on frequency, voltage and temperature
+
+adb shell “$(cat freq_read.sh)”
 
 cat /d/clk/krait0_clk/measure
 
