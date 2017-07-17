@@ -86,7 +86,6 @@ make menuconfig
 
 
 make -j4
-
 # - image is found at msm/arch/arm/boot/zImage-dtb
 
 
@@ -121,7 +120,7 @@ abootimg -x cur-boot.img
 
 # - build the new boot image by combining our zImage kernel image with the above 2 files
 
-abootimg --create myboot.img -f bootimg.cfg -k arm/arch/boot/zImage-dtb -r initrd.img
+abootimg --create myboot.img -f bootimg.cfg -k arch/arm/boot/zImage-dtb -r initrd.img
 
 
 
