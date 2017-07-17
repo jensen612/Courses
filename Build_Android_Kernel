@@ -74,7 +74,6 @@ git clone https://android.googlesource.com/kernel/msm.git
 git checkout android-msm-shamu-3.10-marshmallow-mr2
 
 
-
 ###
 
 # Compile a custom kernel image that can load kernel modules
@@ -122,7 +121,7 @@ abootimg -x cur-boot.img
 
 # - build the new boot image by combining our zImage kernel image with the above 2 files
 
-abootimg --create myboot.img -f bootimg.cfg -k zImage -r initrd.img
+abootimg --create myboot.img -f bootimg.cfg -k arm/arch/boot/zImage-dtb -r initrd.img
 
 
 
