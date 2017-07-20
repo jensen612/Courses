@@ -152,6 +152,11 @@ adb shell su -c "insmod /data/local/tmp/helloworld.ko"
 adb shell dmesg > log
 
 
+arm-linux-androideabi-gcc -pie testebbchar.c -o test
+
+adb push test /data/local/tmp
+
+adb shell su -c "./data/local/tmp/test"
 
 #======================================================================================================
 
