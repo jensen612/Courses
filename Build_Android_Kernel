@@ -106,6 +106,7 @@ adb shell
 
 cat /proc/partitions
 
+
 # - look for the boot partition and extract it (boot -> /dev/block/mmcblk0p14)
 
 ls /dev/block/platform/msm_sdcc.1/by-name/
@@ -156,7 +157,14 @@ arm-linux-androideabi-gcc -pie testebbchar.c -o test
 
 adb push test /data/local/tmp
 
-adb shell su -c "./data/local/tmp/test"
+
+# Run the test in the Android (not in Linux)
+
+adb shell 
+
+su 
+
+./data/local/tmp/test
 
 #======================================================================================================
 
