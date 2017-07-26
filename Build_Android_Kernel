@@ -145,26 +145,35 @@ make CFLAGS_MODULE=-fno-pic ARCH=arm CONFIG_HELLOWORLD=m M=drivers/helloworld
 
 adb push drivers/helloworld/helloworld.ko /data/local/tmp
 
-adb shell su -c "cat /proc/kmsg" &
-
-
 adb shell su -c "insmod /data/local/tmp/helloworld.ko"
 
 adb shell dmesg > log
 
+adb shell su -c "cat /proc/kmsg" &
+
+
+###
+# Run the test
 
 arm-linux-androideabi-gcc -pie testebbchar.c -o test
 
 adb push test /data/local/tmp
-
-
-# Run the test in the Android (not in Linux)
 
 adb shell 
 
 su 
 
 ./data/local/tmp/test
+
+
+###
+# Compile and Run the glitchmin LKM
+
+make CFLAGS_MODULE=-fno-pic ARCH=arm CONFIG_GLITCHMIN=m M=drivers/glitchmin
+
+adb push drivers/glitchmin/glitchmin.ko /data/local/tmp
+
+adb shell su -c "insmod /data/local/tmp/glitchmin.ko" PARAM_gval=0xd0 PARAM_volt=1055000 PARAM_gdelay=5 PARAM_delaypre=8000 PARAM_iter=7
 
 #======================================================================================================
 
@@ -187,7 +196,7 @@ echo 1 > /sys/devices/system/cpu/cpu1/online
 
 echo 1 > /sys/devices/system/cpu/cpu2/online
 
-echo 0 > /sys/devices/system/cpu/cpu3/online
+echo 1 > /sys/devices/system/cpu/cpu3/online
 
 cat /sys/devices/system/cpu/online
 
@@ -199,12 +208,15 @@ echo userspace > /sys/devices/system/cpu/cpu1/cpufreq/scaling_governor
 
 echo userspace > /sys/devices/system/cpu/cpu2/cpufreq/scaling_governor
 
+echo userspace > /sys/devices/system/cpu/cpu3/cpufreq/scaling_governor
+
 echo 2649600 > /sys/devices/system/cpu/cpu0/cpufreq/scaling_setspeed
 
 echo 2649600 > /sys/devices/system/cpu/cpu1/cpufreq/scaling_setspeed
 
 echo 2649600 > /sys/devices/system/cpu/cpu2/cpufreq/scaling_setspeed
 
+echo 2649600 > /sys/devices/system/cpu/cpu3/cpufreq/scaling_setspeed
 
 
 ###
