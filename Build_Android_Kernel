@@ -175,6 +175,12 @@ adb push drivers/glitchmin/glitchmin.ko /data/local/tmp
 
 adb shell su -c "insmod /data/local/tmp/glitchmin.ko" PARAM_gval=0xd0 PARAM_volt=1055000 PARAM_gdelay=5 PARAM_delaypre=8000 PARAM_iter=7
 
+
+make CFLAGS_MODULE=-fno-pic ARCH=arm CONFIG_GLITCHMIN=m M=drivers/glitchcapture
+
+adb push drivers/glitchcapture/glitchcapture.ko /data/local/tmp
+
+adb shell su -c "insmod /data/local/tmp/glitchcapture.ko" PARAM_gval=0xd0 PARAM_volt=1055000 PARAM_gdelay=5 PARAM_delaypre=8000 PARAM_iter=7
 #======================================================================================================
 
 
