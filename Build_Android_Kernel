@@ -239,3 +239,16 @@ cat /d/clk/l2_clk/measure
 
 cat /sys/devices/virtual/thermal/thermal_zone0/temp
 
+
+###
+# Do fever: raise the temperature
+
+arm-linux-androideabi-gcc -pie dofever.c -o dofever
+
+adb push dofever /data/local/tmp
+
+adb shell 
+
+su 
+
+./data/local/tmp/dofever
