@@ -247,8 +247,4 @@ arm-linux-androideabi-gcc -pie dofever.c -o dofever
 
 adb push dofever /data/local/tmp
 
-adb shell 
-
-su 
-
-./data/local/tmp/dofever
+adb shell "./data/local/tmp/dofever"
